@@ -227,11 +227,24 @@ const TPL = {
   bas:{t:"Bas + gainage",rounds:4,blocks:[[["gs","pal"],["bul","pal"]],[["rdl","deadbug"],["ht","deadbug"]],[["fa","glat"],["stepup","planche"]]]},
   cardio:{t:"Tapis fractionné",rounds:3,run:true,blocks:[[["ht","planche"],["swing","bear"]]]},
   full60:{t:"Full body 60′",rounds:4,long:true,blocks:[[["thruster","ta"],["cleanpress","ta"]],[["dc","tva"],["dci","tva"],["arnold","tva"]],[["row","pdecl"],["pullover","pompes"],["renegade","dips"]],[["swing","fp"],["fenterot","fp"],["stepup","presseel"]]]},
+  // programme santé : chaque séance de force couvre jambes, poussée, tirage, charnière de hanches et gainage
+  fb_a:{t:"Force full body A",rounds:3,blocks:[[["gs","rd"],["fa","rd"],["stepup","rowel"]],[["row","pompes"],["dci","ta"],["row","pdecl"]],[["rdl","pal"],["ht","pal"],["swing","deadbug"]]]},
+  fb_b:{t:"Force full body B",rounds:3,blocks:[[["bul","tva"],["gs","tva"],["fa","fp"]],[["dm","ta"],["dc","rowel"],["arnold","ta"]],[["ht","glat"],["rdl","planche"],["pt","deadbug"]]]},
+  z2:{t:"Cardio modéré",z2:true,blocks:[]},
+  express:{t:"Express 12′",rounds:2,short:true,blocks:[[["pompes","rowel"]],[["pont","deadbug"]]]},
 };
-// 3 séances sur 4 à dominante haut du corps ; le bas est entretenu dans "mix" et via les mouvements dynamiques
-const SEQ = ["haut_a","dyn","haut_b","mix"];
+// rotation santé (3 séances/semaine) : force, endurance modérée, force
+const SEQ = ["fb_a","z2","fb_b"];
 const DAYS = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
-const DEF = {days:[1,2,4,5],weekend:true,step:2,fast:12,easy:8,startW:{H:12,M:8,L:6}};
+const DEF = {days:[1,3,5],weekend:false,step:2,fast:12,easy:8,z2:7,startW:{H:12,M:8,L:6}};
+// fin de séance : mobilité contre les effets de la position assise
+const MOB = [
+  {n:"Fente basse, fléchisseurs de hanche",sec:80,cue:"40 s par côté, fessier serré, bassin vers l'avant."},
+  {n:"Extension thoracique sur le banc",sec:45,cue:"Coudes sur le banc, laisse descendre la poitrine."},
+  {n:"Chat-vache",sec:40,cue:"À quatre pattes, enroule puis creuse le dos lentement."},
+  {n:"Écartés élastique",sec:40,cue:"Bras tendus devant, écarte jusqu'à la poitrine, omoplates serrées."},
+  {n:"Rentrés de menton contre le mur",sec:30,cue:"Dos au mur, recule la tête sans la baisser."},
+];
 
 // ---------- Illustrations : bonhomme filaire animé entre deux positions (SMIL, pas de JS en boucle) ----------
 // Articulations : h tête, n épaules, p bassin, e/w coude/poignet, k/f genou/pied ; suffixe 2 = membre éloigné.
@@ -428,11 +441,20 @@ function swapFor(id,zones,used){
 }
 function countType(t){ return S.sessions.filter(s=>s.type===t).length; }
 function autoType(d=new Date()){
-  if(isWeekend(d)) return "full60";
+  if(S.settings.weekend && d.getDay()===6) return "full60";
   return SEQ[S.sessions.filter(s=>SEQ.includes(s.type)).length % SEQ.length];
+}
+// semaine allégée : la 5e semaine active d'affilée, ou après 3 séances très dures (RPE ≥ 9) dans les 14 derniers jours
+function deload(){
+  const last=S.sessions.slice(-3);
+  if(last.length===3 && last.every(s=>(s.rpe||0)>=9) && Date.now()-new Date(last[2].date)<14*864e5) return "fatigue";
+  const cur=dayKey(weekStart(new Date()));
+  const weeks=new Set(S.sessions.map(s=>dayKey(weekStart(new Date(s.date)))).filter(k=>k<cur));
+  return weeks.size>0 && weeks.size%5===4 ? "cycle" : null;
 }
 function intensity(){
   let i=S.adj.intensite||0;
+  if(deload()) i=Math.min(i,-1);
   if(S.ci.sommeil==="mal") i=Math.min(i,-1);
   if(S.ci.energie===1) i=Math.min(i,-1);
   if(S.ci.energie===3 && S.ci.sommeil==="bien" && i===0) i=1;
@@ -443,19 +465,27 @@ function estimate(p){
   let s=0; p.items.forEach(it=>{
     if(it.kind==="run") s+=it.steps.reduce((a,x)=>a+x.sec,0);
     else if(it.kind==="text") s+=it.sec;
+    else if(it.kind==="mob") s+=it.moves.reduce((a,m)=>a+m.sec,0);
     else s+=it.rounds*it.pair.reduce((a,id)=>a+setSec(id),0)+60;
   }); return Math.round(s/60);
 }
 function buildPlan(){
   const type=S.override||autoType(); const tpl=TPL[type]; const st=S.settings;
   const inten=intensity(); const zones=S.adj.zones||[];
-  const budget=S.ci.temps || (tpl.long?60:35);
+  const budget=S.ci.temps || (tpl.long?60:tpl.short?15:35);
   const k=Math.floor(countType(type)/3);
   const used=new Set(); const items=[];
   const wu = tpl.long
     ? [{label:"Marche rapide",sec:180,speed:6},{label:"Footing progressif",sec:300,speed:st.easy}]
+    : tpl.short ? [{label:"Marche rapide",sec:60,speed:6}]
     : [{label:"Marche rapide",sec:90,speed:6},{label:"Footing",sec:120,speed:st.easy}];
   items.push({kind:"run",title:"Échauffement tapis",steps:wu,extra:"Puis 10 rotations d'épaules à l'élastique + 10 squats à vide."});
+  if(tpl.z2){
+    // blocs de 5′ pour que l'ajustement au temps retire 5′ à la fois
+    const n=inten<0?4:5, steps=[];
+    for(let i=0;i<n;i++) steps.push({label:`Allure modérée ${i+1}/${n}`,sec:300,speed:st.z2});
+    items.push({kind:"run",z2:true,title:`Endurance ${n*5}′`,steps,extra:"Tu dois pouvoir parler en phrases complètes. Si tu es essoufflé, ralentis ou incline le tapis au lieu d'accélérer."});
+  }
   if(tpl.run){
     const n=inten<0?6:inten>0?10:8; const f=st.fast+(inten<0?-1:0); const steps=[];
     for(let i=0;i<n;i++){steps.push({label:`Rapide ${i+1}/${n}`,sec:60,speed:f});steps.push({label:"Récup marche",sec:60,speed:6});}
@@ -475,15 +505,17 @@ function buildPlan(){
     items.push({kind:"run",title:`Finisher ${n} × 30″/30″`,steps});
   }
   if(tpl.long) items.push({kind:"run",title:"Retour au calme tapis",steps:[{label:"Footing facile",sec:600,speed:st.easy},{label:"Marche",sec:120,speed:5}]});
-  items.push({kind:"text",title:"Étirements",sec:120,txt:"Hanches, ischios, pectoraux contre le mur."});
-  const p={type,title:tpl.t,items,inten,zones};
+  items.push({kind:"mob",title:"Mobilité posture",moves:tpl.short?MOB.slice(0,3):MOB});
+  const p={type,title:tpl.t,items,inten,zones,deload:deload()};
   // ajustement au temps dispo : 3 tours, puis on retire des blocs depuis la fin
   const pairs=()=>p.items.filter(i=>i.kind==="pair");
   let guard=0;
   while(estimate(p)>budget && guard++<10){
     const big=pairs().find(b=>b.rounds>3);
     if(big){big.rounds--;continue;}
-    const run=p.items.find(i=>i.kind==="run"&&i.steps.length>4);
+    const z=p.items.find(i=>i.z2&&i.steps.length>2);
+    if(z){z.steps.pop();z.steps.forEach((s,i)=>s.label=`Allure modérée ${i+1}/${z.steps.length}`);z.title=`Endurance ${z.steps.length*5}′`;continue;}
+    const run=p.items.find(i=>i.kind==="run"&&!i.z2&&i.steps.length>4);
     if(run){run.steps.splice(-2,2);run.title=run.title.replace(/\d+ ×/,`${run.steps.length/2} ×`);continue;}
     if(pairs().length>1){const ix=p.items.lastIndexOf(pairs().at(-1));p.items.splice(ix,1);continue;}
     break;
@@ -502,7 +534,7 @@ async function aiAdjust(){
   if(!S.sample) return;
   S.aiBusy=true; render();
   const p=buildPlan();
-  const prompt=`Tu es le coach sportif d'Amine (séances à la maison, 5h50–6h25 en semaine, 1h le week-end, objectif principal : régularité).
+  const prompt=`Tu es le coach sportif d'Amine (actif de bureau, séances à la maison à 5h50, 3 par semaine, objectif : santé et régularité).
 Séance prévue : ${p.title} — ${planText(p)}.
 Check-in du matin : sommeil ${S.ci.sommeil}, énergie ${S.ci.energie}/3, temps dispo ${S.ci.temps||"normal"} min.
 Remarque d'Amine : "${S.ci.txt||"rien"}".
@@ -531,7 +563,7 @@ Historique : ${histSummary(8)}
 async function aiChat(q){
   if(!S.sample||!q.trim()) return;
   S.chat.push({role:"user",content:q}); S.chat.push({role:"assistant",content:""}); S.chatBusy=true; render();
-  const ctx=`Contexte (ne pas répéter) : tu es le coach d'Amine. Matériel : barre Smartworkout avec 5 fixations murales (1 haute, 2 mi-hauteur écartées, 2 au sol écartées), tapis de course jusqu'à 16 km/h, tapis de sol, 2 haltères réglables 2–24 kg, banc. Créneau 5h50–6h25 en semaine, 1h le week-end. Il enchaîne les duos sans repos et ne veut pas re-régler les haltères à l'intérieur d'un duo. Priorité : régularité. Historique : ${histSummary(8)}. Séance du jour : ${planText(buildPlan())}. Réponds en français, concis, précis.\n\nQuestion : `;
+  const ctx=`Contexte (ne pas répéter) : tu es le coach d'Amine. Matériel : barre Smartworkout avec 5 fixations murales (1 haute, 2 mi-hauteur écartées, 2 au sol écartées), tapis de course jusqu'à 16 km/h, tapis de sol, 2 haltères réglables 2–24 kg, banc. Actif de bureau, 3 séances par semaine à 5h50 (force full body, cardio modéré). Il ne veut pas re-régler les haltères à l'intérieur d'un duo. Priorité : santé et régularité. Historique : ${histSummary(8)}. Séance du jour : ${planText(buildPlan())}. Réponds en français, concis, précis.\n\nQuestion : `;
   const msgs=S.chat.slice(0,-1).map((m,i)=>({role:m.role,content:i===0?ctx+m.content:m.content}));
   try{
     const r=await S.sample(msgs,{cache:false,onText:({text})=>{S.chat.at(-1).content=text;const el=document.querySelector(".msg.a:last-child");if(el)el.textContent=text;}});
@@ -568,6 +600,10 @@ function planHTML(p){
       const sp=[...new Set(it.steps.map(s=>s.speed))].join(" / ");
       return `<div class="block"><div class="bmark run">TAPIS<b>${tot}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span><span class="t">${sp} km/h</span></div>${it.extra?`<div class="muted" style="font-size:13px">${esc(it.extra)}</div>`:""}</div></div>`;
     }
+    if(it.kind==="mob"){
+      const tot=Math.round(it.moves.reduce((a,m)=>a+m.sec,0)/60);
+      return `<div class="block"><div class="bmark run">MOB<b>${tot}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${it.moves.map(m=>esc(m.n)).join(" · ")}</div></div></div>`;
+    }
     if(it.kind==="text") return `<div class="block"><div class="bmark run">FIN<b>${it.sec/60}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${esc(it.txt)}</div></div></div>`;
     bi++; const note=it.sug.find(s=>s.note);
     return `<div class="block"><div class="bmark">BLOC<b>${String.fromCharCode(64+bi)}</b></div><div class="pair">
@@ -584,7 +620,9 @@ function viewSeance(){
   const p=buildPlan(); const now=new Date(); const tpl=TPL[p.type];
   const doneToday=S.sessions.some(s=>s.date.slice(0,10)===dayKey(now));
   const typeOpts=Object.keys(TPL).map(k=>`<option value="${k}" ${k===p.type?"selected":""}>${TPL[k].t}</option>`).join("");
-  const tOpts=tpl.long?[[60,"60′"],[45,"45′"],[30,"30′"]]:[[35,"35′"],[25,"25′"],[15,"15′"]];
+  const tOpts=tpl.long?[[60,"60′"],[45,"45′"],[30,"30′"]]:tpl.short?[[15,"15′"]]:[[35,"35′"],[25,"25′"],[15,"15′"]];
+  const offerExpress=p.type!=="express" && (S.ci.energie===1 || S.ci.temps===15);
+  const dl={fatigue:"Tes 3 dernières séances étaient très dures (RPE 9 ou plus) : séance allégée pour récupérer.",cycle:"Semaine allégée : après 4 semaines d'entraînement, on lève le pied pour mieux progresser ensuite."}[p.deload];
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">${now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>${esc(p.title)}</h1></div><span class="slot">${isWeekend(now)?"week-end · 1 h":"5:50 → 6:25"}</span></div>
     ${doneToday?`<div class="note" style="border-left-color:var(--good);background:var(--good-soft)">Séance du jour enregistrée. Tu peux en refaire une ou passer à demain.</div>`:""}
@@ -596,8 +634,10 @@ function viewSeance(){
       <label class="field"><span>Douleur, gêne ou contrainte</span><textarea id="citxt" placeholder="ex. épaule droite raide, genou ok">${esc(S.ci.txt)}</textarea></label>
       ${S.sample?`<button class="btn" id="aiadj" ${S.aiBusy?"disabled":""}>${S.aiBusy?"Le coach ajuste…":"Adapter avec le coach IA"}</button>`:""}
     </div>
+    ${offerExpress?`<div class="note stack" style="gap:10px"><span>Peu d'énergie ou peu de temps ? 12 minutes valent mieux que rien, et la séance compte dans ta semaine.</span><button class="btn" id="express">Passer en séance express</button></div>`:""}
+    ${dl?`<div class="note">${dl}</div>`:""}
     ${S.adj.msg?`<div class="note ai">${esc(S.adj.msg)}</div>`:""}
-    ${(p.zones.length||p.inten)?`<div class="tags">${p.inten<0?'<span class="tag">intensité −1</span>':""}${p.inten>0?'<span class="tag up">bonne forme</span>':""}${p.zones.map(z=>`<span class="tag">évite : ${ZONES[z]}</span>`).join("")}</div>`:""}
+    ${(p.zones.length||p.inten)?`<div class="tags">${p.deload?'<span class="tag">semaine allégée</span>':""}${p.inten<0&&!p.deload?'<span class="tag">intensité −1</span>':""}${p.inten>0?'<span class="tag up">bonne forme</span>':""}${p.zones.map(z=>`<span class="tag">évite : ${ZONES[z]}</span>`).join("")}</div>`:""}
     <div class="card">
       <div class="row between" style="margin-bottom:6px"><h3>Plan</h3><span class="num muted">≈ ${p.min} min</span></div>
       ${planHTML(p)}
@@ -617,29 +657,31 @@ function weekly(){
     for(let j=0;j<7;j++){const d=new Date(ws);d.setDate(d.getDate()+j);const k=dayKey(d);const dn=done.has(k);if(dn)n++;cells.push({d,k,dn,plan:plannedDay(d)});}
     weeks.push({ws,cells,n});
   }
-  let streak=0; for(let i=weeks.length-2;i>=0;i--){ if(weeks[i].n>=target) streak++; else break; }
-  if(weeks.at(-1).n>=target) streak++;
-  return {weeks,target,streak};
+  // une semaine est validée dès objectif − 1 séances : un jour raté ne casse pas la série
+  const need=Math.max(1,target-1);
+  let streak=0; for(let i=weeks.length-2;i>=0;i--){ if(weeks[i].n>=need) streak++; else break; }
+  if(weeks.at(-1).n>=need) streak++;
+  return {weeks,target,need,streak};
 }
 function viewSemaine(){
-  const {weeks,target,streak}=weekly(); const today=dayKey(new Date()); const cur=weeks.at(-1);
+  const {weeks,target,need,streak}=weekly(); const today=dayKey(new Date()); const cur=weeks.at(-1);
   const st=S.settings;
   // aperçu de la rotation sur les 7 prochains jours
   let n=S.sessions.filter(s=>SEQ.includes(s.type)).length; const doneToday=S.sessions.some(s=>s.date.slice(0,10)===today);
   const next=[]; for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()+i); if(i===0&&doneToday) continue; if(!plannedDay(d)) continue;
-    next.push({d,t:isWeekend(d)?"full60":SEQ[n++%SEQ.length]});}
+    next.push({d,t:st.weekend&&d.getDay()===6?"full60":SEQ[n++%SEQ.length]});}
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">Régularité</div><h1>Ma semaine</h1></div></div>
     <div class="kpis">
       <div class="kpi"><b class="num">${cur.n}/${target}</b><span>cette semaine</span></div>
-      <div class="kpi"><b class="num">${streak}</b><span>semaine${streak>1?"s":""} d'affilée à l'objectif</span></div>
+      <div class="kpi"><b class="num">${streak}</b><span>semaine${streak>1?"s":""} validée${streak>1?"s":""} d'affilée</span></div>
       <div class="kpi"><b class="num">${S.sessions.length}</b><span>séances au total</span></div>
     </div>
     <div class="card">
       <div class="grid"><span></span>${["L","M","M","J","V","S","D"].map(x=>`<span class="h">${x}</span>`).join("")}
       ${weeks.map(w=>`<span class="wk">${w.ws.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}</span>${w.cells.map(c=>`<span class="cell ${c.dn?"done":c.plan&&c.k>=today?"plan":""} ${c.k===today?"today":""}" title="${c.k}"></span>`).join("")}`).join("")}
       </div>
-      <div class="row muted" style="font-size:12px;margin-top:10px;gap:14px"><span class="row" style="gap:5px"><span class="cell done" style="width:12px"></span>faite</span><span class="row" style="gap:5px"><span class="cell plan" style="width:12px"></span>prévue</span></div>
+      <div class="row muted" style="font-size:12px;margin-top:10px;gap:14px"><span class="row" style="gap:5px"><span class="cell done" style="width:12px"></span>faite</span><span class="row" style="gap:5px"><span class="cell plan" style="width:12px"></span>prévue</span><span>semaine validée dès ${need} séance${need>1?"s":""}</span></div>
     </div>
     <div class="card"><h3 style="margin-bottom:6px">À venir</h3>
       <div class="hist">${next.map(x=>`<div class="it"><span>${x.d.toLocaleDateString("fr-FR",{weekday:"long"})}</span><span class="muted">${TPL[x.t].t}</span></div>`).join("")||'<div class="empty">Aucun jour prévu.</div>'}</div>
@@ -651,6 +693,7 @@ function viewSemaine(){
         <label class="field" style="flex:1"><span>Cran haltères (kg)</span><input type="number" id="s_step" min="0.5" step="0.5" value="${st.step}"></label>
         <label class="field" style="flex:1"><span>Vitesse rapide</span><input type="number" id="s_fast" min="6" max="16" step="0.5" value="${st.fast}"></label>
         <label class="field" style="flex:1"><span>Footing</span><input type="number" id="s_easy" min="5" max="14" step="0.5" value="${st.easy}"></label>
+        <label class="field" style="flex:1"><span>Modéré</span><input type="number" id="s_z2" min="4" max="12" step="0.5" value="${st.z2}"></label>
       </div>
       <div class="field"><span>Charges de départ (kg par haltère) : lourd / moyen / léger</span><div class="row" style="flex-wrap:nowrap">
         ${["H","M","L"].map(t=>`<input type="number" data-sw="${t}" min="2" max="24" step="${st.step}" value="${st.startW[t]}" aria-label="Charge ${t}">`).join("")}</div></div>
@@ -700,6 +743,7 @@ function flatten(p){
   p.items.forEach((it,ii)=>{
     if(it.kind==="run") it.steps.forEach((s,k)=>steps.push({kind:"run",ii,...s,title:it.title,extra:k===it.steps.length-1?it.extra:null}));
     else if(it.kind==="text") steps.push({kind:"timer",ii,label:it.title,sec:it.sec,txt:it.txt});
+    else if(it.kind==="mob") it.moves.forEach(m=>steps.push({kind:"timer",ii,label:m.n,sec:m.sec,txt:m.cue,title:it.title}));
     else{
       bi++; steps.push({kind:"weight",ii,bi});
       for(let r=0;r<it.rounds;r++) it.pair.forEach((id,k)=>steps.push({kind:"set",ii,bi,r,k,id}));
@@ -757,7 +801,7 @@ function viewLive(){
   const it=L.plan.items[st.ii]; const nx=L.steps[L.i+1];
   let body="";
   if(st.kind==="run"||st.kind==="timer"){
-    body=`${st.kind==="run"?`<div class="hero-ill">${illus("run")}</div>`:""}<div class="eyebrow">${esc(st.kind==="run"?st.title:"Fin de séance")}</div><div class="what">${esc(st.label)}</div>
+    body=`${st.kind==="run"?`<div class="hero-ill">${illus("run")}</div>`:""}<div class="eyebrow">${esc(st.title||"Fin de séance")}</div><div class="what">${esc(st.label)}</div>
       ${st.kind==="run"?`<div class="tags"><span class="tag kg num">${st.speed} km/h</span></div>`:`<div class="muted">${esc(st.txt)}</div>`}
       <div class="big" id="left">${fmt(L.left)}</div>${st.extra?`<div class="muted">${esc(st.extra)}</div>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="m30" style="flex:1">−30 s</button><button class="btn" id="p30" style="flex:1">+30 s</button><button class="btn primary" id="next" style="flex:2">Passer</button></div>`;
@@ -808,6 +852,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.we){S.settings.weekend=!S.settings.weekend;store.saveSettings();render();return;}
   if(b.dataset.q){aiChat(b.dataset.q);return;}
   if(b.id==="exp"){store.exportFile();return;}
+  if(b.id==="express"){S.override="express";S.ci.temps=null;render();window.scrollTo(0,0);return;}
   if(!L) return;
   if(b.id==="quit"){endLive();render();return;}
   if(b.id==="next"){advance();return;}
@@ -826,6 +871,7 @@ document.addEventListener("change",e=>{
   if(t.id==="s_step"){st.step=Math.max(.5,+t.value||2);}
   else if(t.id==="s_fast"){st.fast=Math.min(16,Math.max(6,+t.value||12));}
   else if(t.id==="s_easy"){st.easy=Math.min(14,Math.max(5,+t.value||8));}
+  else if(t.id==="s_z2"){st.z2=Math.min(12,Math.max(4,+t.value||7));}
   else if(t.dataset.sw){st.startW[t.dataset.sw]=clampW(+t.value||8);}
   else return;
   store.saveSettings(); render();
