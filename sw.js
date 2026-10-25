@@ -1,6 +1,6 @@
 // Service worker : tout le shell est précaché, l'app tourne hors ligne.
 // Incrémenter CACHE_VERSION à chaque déploiement qui modifie un de ces fichiers.
-const CACHE_VERSION = "creneau-v13";
+const CACHE_VERSION = "creneau-v14";
 const SHELL = [
   "./",
   "index.html",

@@ -280,30 +280,49 @@ const EX = {
   chaise:{n:"Chaise contre le mur",eq:"bw",p:"legs",hold:45,z:["genou"],cue:"Dos au mur, cuisses parallèles au sol, genoux au-dessus des chevilles."},
   pompesdiam:{n:"Pompes serrées",eq:"bw",p:"push",r:[6,12],z:["poignet","coude"],cue:"Mains rapprochées sous la poitrine, coudes le long du corps."},
   hollow:{n:"Gainage creux",eq:"bw",p:"core",hold:30,z:[],cue:"Sur le dos, bas du dos plaqué au sol, jambes et épaules décollées."},
+  // ajouts : fessiers, posture et gainage (programme féminin, utiles à tous)
+  sumodl:{n:"Soulevé de terre sumo",eq:"db",p:"hinge",tier:"H",r:[10,12],z:["dos"],cue:"Pieds larges, haltère entre les jambes, pousse le sol et serre les fessiers en haut."},
+  curtsy:{n:"Fente croisée",eq:"db",p:"legs",tier:"M",r:[8,10],z:["genou"],uni:1,cue:"La jambe arrière croise derrière en diagonale, genou avant au-dessus du pied."},
+  clamshell:{n:"Clamshell",eq:"bw",p:"hinge",r:[15,20],z:[],uni:1,cue:"Sur le côté, genoux pliés, ouvre le genou du dessus sans rouler le bassin."},
+  donkey:{n:"Donkey kick",eq:"bw",p:"hinge",r:[12,15],z:[],uni:1,cue:"À quatre pattes, genou plié à 90°, pousse la plante du pied vers le plafond."},
+  hydrant:{n:"Fire hydrant",eq:"bw",p:"hinge",r:[12,15],z:[],uni:1,cue:"À quatre pattes, monte le genou sur le côté sans pencher le buste."},
+  birddog:{n:"Bird dog",eq:"bw",p:"core",r:[8,10],z:[],uni:1,cue:"À quatre pattes, tends le bras et la jambe opposés, dos immobile, tiens 2 s."},
+  pompesinc:{n:"Pompes inclinées sur banc",eq:"bw",p:"push",r:[8,15],z:["poignet"],cue:"Mains sur le banc, corps gainé, poitrine vers le bord du banc."},
+  frogpump:{n:"Frog pumps",eq:"bw",p:"hinge",r:[15,25],z:[],cue:"Sur le dos, plantes de pieds collées, genoux ouverts, monte les hanches et serre les fessiers."},
 };
 const ZONES = {epaule:"Épaule",coude:"Coude",poignet:"Poignet",dos:"Lombaires",genou:"Genou"};
 
 // Chaque bloc = un duo enchaîné sans repos. Règle : au plus UN exercice haltères par duo,
 // donc on ne règle les haltères qu'entre deux blocs.
 const TPL = {
-  haut_a:{t:"Haut du corps, poussée",rounds:4,blocks:[[["dc","ta"],["dci","rd"],["dc","rowel"]],[["dm","tva"],["arnold","tva"],["dm","fp"]],[["ext","pdecl"],["el","dips"],["ext","fp"]]]},
-  dyn:{t:"Full body dynamique",rounds:4,fin:true,blocks:[[["thruster","rowel"],["cleanpress","sqrow"],["snatch","rowel"]],[["renegade","burpee"],["manmaker","bear"],["renegade","spider"]],[["swing","presseel"],["fenterot","presseel"],["swing","spider"]]]},
-  haut_b:{t:"Haut du corps, tirage",rounds:4,blocks:[[["row","pompes"],["row","pdecl"],["renegade","tva"]],[["pullover","fp"],["dci","rd"],["pullover","rowel"]],[["curl","tri"],["el","ce"],["curl","dips"]]]},
-  mix:{t:"Haut + entretien bas",rounds:4,blocks:[[["gs","pal"],["bul","pal"],["stepup","pal"]],[["rdl","pompes"],["ht","pdecl"],["swing","pompes"]],[["dm","rd"],["arnold","fp"],["dci","ta"]]]},
+  haut_a:{t:"Haut du corps, poussée",g:"m",rounds:4,blocks:[[["dc","ta"],["dci","rd"],["dc","rowel"]],[["dm","tva"],["arnold","tva"],["dm","fp"]],[["ext","pdecl"],["el","dips"],["ext","fp"]]]},
+  dyn:{t:"Full body dynamique",g:"m",rounds:4,fin:true,blocks:[[["thruster","rowel"],["cleanpress","sqrow"],["snatch","rowel"]],[["renegade","burpee"],["manmaker","bear"],["renegade","spider"]],[["swing","presseel"],["fenterot","presseel"],["swing","spider"]]]},
+  haut_b:{t:"Haut du corps, tirage",g:"m",rounds:4,blocks:[[["row","pompes"],["row","pdecl"],["renegade","tva"]],[["pullover","fp"],["dci","rd"],["pullover","rowel"]],[["curl","tri"],["el","ce"],["curl","dips"]]]},
+  mix:{t:"Haut + entretien bas",g:"m",rounds:4,blocks:[[["gs","pal"],["bul","pal"],["stepup","pal"]],[["rdl","pompes"],["ht","pdecl"],["swing","pompes"]],[["dm","rd"],["arnold","fp"],["dci","ta"]]]},
   bas:{t:"Bas + gainage",rounds:4,blocks:[[["gs","pal"],["bul","pal"]],[["rdl","deadbug"],["ht","deadbug"]],[["fa","glat"],["stepup","planche"]]]},
   cardio:{t:"Tapis fractionné",rounds:3,run:true,blocks:[[["ht","planche"],["swing","bear"]]]},
-  full60:{t:"Full body 60′",rounds:4,long:true,blocks:[[["thruster","ta"],["cleanpress","ta"]],[["dc","tva"],["dci","tva"],["arnold","tva"]],[["row","pdecl"],["pullover","pompes"],["renegade","dips"]],[["swing","fp"],["fenterot","fp"],["stepup","presseel"]]]},
+  full60:{t:"Full body 60′",g:"m",rounds:4,long:true,blocks:[[["thruster","ta"],["cleanpress","ta"]],[["dc","tva"],["dci","tva"],["arnold","tva"]],[["row","pdecl"],["pullover","pompes"],["renegade","dips"]],[["swing","fp"],["fenterot","fp"],["stepup","presseel"]]]},
+  // programme féminin : plus de fessiers et de chaîne arrière, haut du corps orienté posture, gainage
+  f_bas:{t:"Bas du corps et fessiers",g:"f",rounds:3,blocks:[[["ht","abduct"],["sumodl","clamshell"],["ht","frogpump"],["rdlu","hydrant"]],[["bul","donkey"],["curtsy","pont"],["gs","kickback"],["stepup","abduct"]],[["rdl","deadbug"],["sumo","birddog"],["fentlat","pal"],["mollets","glat"]]]},
+  f_haut:{t:"Haut du corps et posture",g:"f",rounds:3,blocks:[[["row","pompesinc"],["rowbent","pompesinc"],["row","presseel"]],[["dm","tva"],["arnold","tbt"],["dci","fp"]],[["el","pullap"],["oiseau","tri"],["curl","fp"]]]},
+  f_full:{t:"Full body et gainage",g:"f",rounds:3,cardio:10,blocks:[[["gs","rowel"],["thruster","tva"],["sumo","rd"]],[["rdl","pompesinc"],["swing","pompesinc"],["ht","presseel"]],[["deadbug","birddog"],["planche","pal"],["hollow","glat"]]]},
   // programme santé : chaque séance de force couvre jambes, poussée, tirage, charnière de hanches et gainage
-  fb_a:{t:"Force full body A",rounds:3,blocks:[[["gs","rd"],["fa","rd"],["stepup","rowel"],["sumo","pullap"]],[["row","pompes"],["dci","ta"],["row","pdecl"],["rowbent","pompesdiam"],["flyes","tbt"]],[["rdl","pal"],["ht","pal"],["swing","deadbug"],["rdlu","woodchop"],["farmer","superman"]]]},
-  fb_b:{t:"Force full body B",rounds:3,blocks:[[["bul","tva"],["gs","tva"],["fa","fp"],["fentlat","pullap"],["squatel","oiseau"]],[["dm","ta"],["dc","rowel"],["arnold","ta"],["dcs","tbt"],["rowbent","pressep"]],[["ht","glat"],["rdl","planche"],["pt","deadbug"],["mollets","hollow"],["kickback","chaise"]]]},
+  fb_a:{t:"Force full body A",g:"m",rounds:3,blocks:[[["gs","rd"],["fa","rd"],["stepup","rowel"],["sumo","pullap"]],[["row","pompes"],["dci","ta"],["row","pdecl"],["rowbent","pompesdiam"],["flyes","tbt"]],[["rdl","pal"],["ht","pal"],["swing","deadbug"],["rdlu","woodchop"],["farmer","superman"]]]},
+  fb_b:{t:"Force full body B",g:"m",rounds:3,blocks:[[["bul","tva"],["gs","tva"],["fa","fp"],["fentlat","pullap"],["squatel","oiseau"]],[["dm","ta"],["dc","rowel"],["arnold","ta"],["dcs","tbt"],["rowbent","pressep"]],[["ht","glat"],["rdl","planche"],["pt","deadbug"],["mollets","hollow"],["kickback","chaise"]]]},
   z2:{t:"Cardio modéré",z2:true,blocks:[]},
   express:{t:"Express 12′",rounds:2,short:true,blocks:[[["pompes","rowel"]],[["pont","deadbug"]]]},
 };
 // rotation santé (3 séances/semaine) : force, endurance modérée, force
-const SEQ = ["fb_a","z2","fb_b"];
+const SEQ_M = ["fb_a","z2","fb_b"], SEQ_F = ["f_bas","f_haut","f_full"];
+const SEQ = SEQ_M; // programme de base masculin (seqBase() suit le profil)
+const fem=()=>S.settings.profile==="f";
+const seqBase=()=>fem()?SEQ_F:SEQ_M;
+// accord selon le profil : g("prêt","prête")
+const g=(m,f)=>fem()?f:m;
+const prenom=()=>S.settings.name?.trim()||"";
 // séances disponibles : programme intégré + séances perso ; la rotation est choisie dans Mes séances
 const tplOf=t=>TPL[t]||S.custom[t]||null;
-const seqList=()=>{ const q=(S.settings.seq||SEQ).filter(t=>tplOf(t)); return q.length?q:SEQ; };
+const seqList=()=>{ const q=(S.settings.seq||seqBase()).filter(t=>tplOf(t)); return q.length?q:seqBase(); };
 const DAYS = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
 const DEF = {days:[1,3,5],weekend:false,step:2,fast:12,easy:8,z2:7,rest:30,voice:true,bands:[5,10,15,25,35],startW:{H:12,M:8,L:6}};
 // ---------- Mobilité : catalogue (sec = durée par côté si side) ----------
@@ -518,6 +537,14 @@ Object.assign(POSE, {
   respiration:{dur:5,a:{...at(60),e:[64,32],w:[63,38],e2:[64,32],w2:[63,38]},b:{e:[65,32],w:[65,38],h:[60,12],n:[60,19]}},
   inchworm:{props:MAT,dur:3.5,a:{h:[66,66],n:[63,60],p:[55,40],k:[59,56],f:[58,72],e:[65,66],w:[66,72]},b:{h:[85,56],n:[78,58],p:[52,62],k:[38,66],f:[24,70],e:[78,64],w:[78,70]}},
   genouxhauts:{dur:1.2,a:{...at(60),k:[68,46],f:[64,60],k2:[60,57],f2:[60,72],e:[54,30],w:[60,36],e2:[66,30],w2:[70,24]},b:{k:[60,57],f:[60,72],k2:[68,46],f2:[64,60],e:[66,30],w:[70,24],e2:[54,30],w2:[60,36]}},
+  sumodl:{front:1,gob:1,a:{h:[60,13],n:[60,20],p:[60,42],k:[52,57],f:[48,72],k2:[68,57],f2:[72,72],e:[58,31],w:[60,42],e2:[62,31],w2:[60,42]},b:{h:[60,28],n:[60,34],p:[60,50],k:[50,60],k2:[70,60],e:[58,46],w:[60,58],e2:[62,46],w2:[60,58]}},
+  curtsy:{front:1,db:1,a:{h:[60,13],n:[60,20],p:[60,42],k:[56,57],f:[55,72],k2:[64,57],f2:[65,72],e:[54,31],w:[53,42],e2:[66,31],w2:[67,42]},b:{h:[60,23],n:[60,30],p:[60,52],k:[54,60],f:[55,72],k2:[57,66],f2:[47,71],e:[54,41],w:[53,52],e2:[66,41],w2:[67,52]}},
+  clamshell:{props:MAT,dur:2.4,a:{h:[86,63],n:[78,66],p:[54,67],k:[44,62],f:[30,67],k2:[45,64],f2:[30,68],e:[84,66],w:[92,64]},b:{k:[48,52]}},
+  donkey:{props:MAT,dur:2.4,a:{...QUAD,k2:[46,70],f2:[31,71]},b:{k:[32,54],f:[31,39]}},
+  hydrant:{props:MAT,dur:2.4,a:{...QUAD,k2:[46,70],f2:[31,71]},b:{k:[50,60],f:[38,62]}},
+  birddog:{props:MAT,dur:3,a:{...QUAD,e2:[72,62],w2:[72,70],k2:[46,70],f2:[31,71]},b:{e:[84,53],w:[96,52],k2:[32,55],f2:[18,55]}},
+  pompesinc:{props:[["bench",78,106,46]],a:{h:[86,32],n:[79,36],p:[54,52],k:[39,62],f:[24,71],e:[82,41],w:[85,46]},b:{h:[88,40],n:[81,43],p:[55,56],k:[40,64],e:[76,40]}},
+  frogpump:{props:MAT,dur:2,a:{h:[24,66],n:[32,68],p:[52,68],k:[60,58],f:[64,70],e:[42,70],w:[52,70]},b:{p:[54,58],k:[62,53]}},
 });
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function fillPose(o){const r={...o}; for(const k of ["e","w","k","f"]) if(!r[k+"2"]) r[k+"2"]=r[k]; return r;}
@@ -842,7 +869,7 @@ function estimate(p){
   }); return Math.round(s/60);
 }
 function buildPlan(){
-  let type=S.override||autoType(); if(!tplOf(type)) type=S.override=SEQ[0]; const tpl=tplOf(type); const st=S.settings;
+  let type=S.override||autoType(); if(!tplOf(type)) type=S.override=seqBase()[0]; const tpl=tplOf(type); const st=S.settings;
   const inten=intensity(); const zones=S.adj.zones||[];
   const budget=Math.max(10,S.ci.temps??defBudget(tpl));
   const k=Math.floor(countType(type)/3);
@@ -856,7 +883,7 @@ function buildPlan(){
     // blocs de 5′ pour que l'ajustement au temps retire 5′ à la fois
     const n=inten<0?4:5, steps=[];
     for(let i=0;i<n;i++) steps.push({label:`Allure modérée ${i+1}/${n}`,sec:300,speed:st.z2});
-    items.push({kind:"run",z2:true,title:`Endurance ${n*5}′`,steps,extra:"Tu dois pouvoir parler en phrases complètes. Si tu es essoufflé, ralentis ou incline le tapis au lieu d'accélérer."});
+    items.push({kind:"run",z2:true,title:`Endurance ${n*5}′`,steps,extra:`Tu dois pouvoir parler en phrases complètes. Si tu es ${g("essoufflé","essoufflée")}, ralentis ou incline le tapis au lieu d'accélérer.`});
   }
   if(tpl.run){
     const n=inten<0?6:inten>0?10:8; const f=st.fast+(inten<0?-1:0); const steps=[];
@@ -938,6 +965,9 @@ function buildPlan(){
   p.min=estimate(p); return p;
 }
 
+// qui est coaché : prénom si renseigné, sinon une description selon le profil
+const qui=()=>{ const n=prenom(); return n?`de ${n} (${g("un actif","une active")} de bureau)`:g("d'un actif de bureau","d'une active de bureau"); };
+const nomDe=()=>prenom()?`de ${prenom()}`:g("de l'utilisateur","de l'utilisatrice");
 // ---------- IA (le coach ne choisit pas les exos : il renvoie des paramètres que le moteur applique) ----------
 function histSummary(n=6){
   return S.sessions.slice(-n).map(s=>`${dayKey(new Date(s.date))} ${tplOf(s.type)?.t||s.type} ${Math.round(s.dur/60)}min RPE${s.rpe||"?"}${s.note?` "${s.note}"`:""}`).join("\n")||"aucune séance enregistrée";
@@ -949,10 +979,10 @@ async function aiAdjust(){
   if(!S.sample) return;
   S.aiBusy=true; render();
   const p=buildPlan();
-  const prompt=`Tu es le coach sportif d'Amine (actif de bureau, séances à la maison à 5h50, 3 par semaine, objectif : santé et régularité).
+  const prompt=`Tu es le coach sportif ${qui()}, séances à la maison tôt le matin, 3 par semaine, objectif : santé et régularité.${fem()?" Programme féminin : priorité aux fessiers, à la chaîne arrière, à la posture et au gainage.":""}
 Séance prévue : ${p.title} — ${planText(p)}.
 Check-in du matin : sommeil ${S.ci.sommeil}, énergie ${S.ci.energie}/3, temps dispo ${S.ci.temps??"normal"} min.
-Remarque d'Amine : "${S.ci.txt||"rien"}".
+Remarque ${nomDe()} : "${S.ci.txt||"rien"}".
 Historique récent :
 ${histSummary()}
 Réponds uniquement en JSON : {"intensite": -1, 0 ou 1, "zones_a_eviter": sous-ensemble de ${JSON.stringify(Object.keys(ZONES))}, "message": "1 à 2 phrases en français, tutoiement, concret, sans emoji"}.
@@ -968,7 +998,7 @@ Ne propose pas d'exercices : le moteur choisit les remplacements à partir des z
 async function aiDebrief(sess){
   if(!S.sample) return;
   S.debrief="…"; render();
-  const prompt=`Coach d'Amine. Séance terminée : ${tplOf(sess.type)?.t}, ${Math.round(sess.dur/60)} min, RPE ${sess.rpe}. Détail : ${sess.blocks.map(b=>`${b.pair.map(id=>EX[id].n).join("+")}${b.w?` @${b.w}kg`:""} reps ${b.log.map(r=>r.join("/")).join(" ")}`).join(" | ")}. Note : "${sess.note||""}".
+  const prompt=`Tu es le coach sportif ${qui()}. Séance terminée : ${tplOf(sess.type)?.t}, ${Math.round(sess.dur/60)} min, RPE ${sess.rpe}. Détail : ${sess.blocks.map(b=>`${b.pair.map(id=>EX[id].n).join("+")}${b.w?` @${b.w}kg`:""} reps ${b.log.map(r=>r.join("/")).join(" ")}`).join(" | ")}. Note : "${sess.note||""}".
 Historique : ${histSummary(8)}
 Écris 3 lignes courtes en français (tutoiement, sans emoji) : 1) ce qui progresse, 2) le point à surveiller, 3) l'objectif concret de la prochaine séance.`;
   try{ const r=await S.sample(prompt,{onText:({text})=>{S.debrief=text;const el=$("#debrief");if(el)el.textContent=text;}}); S.debrief=r.text; }
@@ -1071,25 +1101,25 @@ async function aiChat(q){
   if(!S.sample||!q.trim()) return;
   S.chat.push({role:"user",content:q}); S.chat.push({role:"assistant",content:""}); S.chatBusy=true; render();
   const p=buildPlan();
-  const conv=S.chat.slice(0,-2).slice(-8).map(m=>`${m.role==="user"?"Amine":"Coach"} : ${m.content}`).join("\n");
-  const prompt=`Tu es le coach sportif d'Amine : actif de bureau, séances à la maison à 5h50, 3 par semaine, objectif santé et régularité.
+  const conv=S.chat.slice(0,-2).slice(-8).map(m=>`${m.role==="user"?(prenom()||g("L'utilisateur","L'utilisatrice")):"Coach"} : ${m.content}`).join("\n");
+  const prompt=`Tu es le coach sportif ${qui()} : séances à la maison tôt le matin, 3 par semaine, objectif santé et régularité.${fem()?" Programme féminin : priorité aux fessiers, à la chaîne arrière, à la posture et au gainage.":""}
 Matériel : barre Smartworkout avec 5 fixations murales (1 haute, 2 mi-hauteur écartées, 2 au sol écartées), tapis de course jusqu'à 16 km/h, tapis de sol, 2 haltères réglables 2–24 kg, banc.
 Séance du jour « ${p.title} », modifiable :
 ${planForCoach(p)}
 Catalogue des exercices possibles (id : nom, matériel, mouvement) :
 ${Object.entries(EX).map(([id,e])=>`${id} : ${e.n}, ${EQL[e.eq]}, ${e.p}${e.z.length?`, sollicite ${e.z.join("/")}`:""}`).join("\n")}
 Règles pour les changements :
-- au plus un exercice aux haltères par bloc (il ne règle les haltères qu'entre deux blocs) ;
+- au plus un exercice aux haltères par bloc (les haltères ne se règlent qu'entre deux blocs) ;
 - kg entre 2 et 24 par crans de ${num(S.settings.step)} kg ; élastiques disponibles : ${bandList().join(", ")} kg (op kg sur un exercice élastique = choix de l'élastique) ; répétitions entre 1 et 40 ; 10 à 180 secondes pour les gainages ; 1 à 6 tours ;
-- propose des changements seulement si Amine le demande ou signale une douleur, une fatigue ou une contrainte de temps ; sinon changes = [] ;
-- s'il refuse un exercice (« pas de X », « sans X », « remplace X »), remplace par swap CHAQUE exercice concerné de la séance (toutes ses variantes) par un exercice du même type de mouvement qui n'est pas une variante du même exercice ;
+- propose des changements seulement si ${prenom()||g("l'utilisateur","l'utilisatrice")} le demande ou signale une douleur, une fatigue ou une contrainte de temps ; sinon changes = [] ;
+- en cas de refus d'un exercice (« pas de X », « sans X », « remplace X »), remplace par swap CHAQUE exercice concerné de la séance (toutes ses variantes) par un exercice du même type de mouvement qui n'est pas une variante du même exercice ;
 - le remplaçant ne doit pas déjà être dans la séance ; si l'autre exercice du bloc est aux haltères, le remplaçant ne doit pas être aux haltères ;
 - utilise toujours les id du catalogue dans ex et to, jamais les noms ;
 - si une douleur est vive ou inhabituelle, conseille de consulter.
 Opérations (champs inutilisés : "" ou 0) : swap (ex = id dans la séance, to = id du catalogue), reps (ex, value), kg (ex, value), rounds (bloc = numéro du bloc, value), remove (bloc).
 Historique récent :
 ${histSummary(6)}
-${conv?`Conversation :\n${conv}\n`:""}Amine : ${q}
+${conv?`Conversation :\n${conv}\n`:""}${prenom()||g("L'utilisateur","L'utilisatrice")} : ${q}
 Réponds avec message (2 à 5 phrases, tutoiement, sans emoji ; si tu proposes des changements, dis pourquoi en une phrase) et changes.`;
   try{
     const r=await S.sample.plan(prompt), a=S.chat.at(-1);
@@ -1160,6 +1190,7 @@ function viewSeance(){
   return `<div class="stack">
     <div class="header"><div style="min-width:0"><div class="eyebrow">${cap(now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}))}</div><h1>${esc(p.title)}</h1><div class="sub num">${p.min} minutes${nb?`, ${nb} bloc${nb>1?"s":""}`:""}</div></div><button class="icon-btn" data-tab="reglages" aria-label="Réglages">${ICON.gear}</button></div>
     <div class="row" style="gap:18px"><label class="typesel">Changer de séance ${ICON.chev}<select id="type" aria-label="Type de séance">${typeOpts}</select></label><button class="typesel" data-tab="seances" style="background:none;border:0;padding:0">Mes séances</button></div>
+    ${!S.settings.profile&&!S.sessions.length?note("","Bienvenue. Choisis ton programme de départ : tu pourras le changer dans les réglages.",`<div class="seg"><button class="chip" data-prof="m">Programme homme</button><button class="chip" data-prof="f">Programme femme</button></div>`):""}
     ${S.bootNote?note("good",esc(S.bootNote)):""}
     ${doneToday?note("good","Séance du jour enregistrée. Tu peux en refaire une ou passer à demain."):""}
     ${p.mods?note("ai","Séance modifiée par le coach.",`<button class="btn" id="undomods">Annuler les changements</button>`):""}
@@ -1234,6 +1265,11 @@ function viewReglages(){
   const st=S.settings, th=st.theme||"auto";
   return `<div class="stack">
     <div class="header"><div><h1>Réglages</h1></div><button class="icon-btn" data-tab="${S.prevTab||"seance"}" aria-label="Retour">${ICON.close}</button></div>
+    <div class="card stack"><h3>Profil</h3>
+      <div class="seg">${[["m","Homme"],["f","Femme"]].map(([v,l])=>`<button class="chip" data-prof="${v}" aria-pressed="${(st.profile||"m")===v}">${l}</button>`).join("")}</div>
+      <span class="muted small">Choisit le programme de séances types et les charges de départ. Tes séances perso et ton historique ne changent pas.</span>
+      <label class="field"><span>Prénom (pour le coach)</span><input type="text" id="s_name" autocomplete="given-name" maxlength="30" value="${esc(st.name||"")}"></label>
+    </div>
     <div class="card stack"><h3>Programme</h3>
       <div class="field"><span>Jours de séance</span><div class="row">${[1,2,3,4,5].map(d=>`<button class="chip" data-day="${d}" aria-pressed="${st.days.includes(d)}">${DAYS[d]}</button>`).join("")}<button class="chip" data-we="1" aria-pressed="${st.weekend}">Samedi 1 h</button></div></div>
       <div class="field"><span>Repos entre les tours d'un bloc</span><div class="seg">${[[0,"Aucun"],[30,"30 s"],[60,"60 s"],[90,"90 s"]].map(([v,l])=>`<button class="chip" data-rest="${v}" aria-pressed="${(st.rest||0)===v}">${l}</button>`).join("")}</div></div>
@@ -1579,7 +1615,7 @@ function createCustom(from){
   const id="c_"+Date.now().toString(36);
   if(from&&TPL[from]){
     const t=TPL[from], k=Math.floor(countType(from)/3);
-    S.custom[id]={id,t:`${t.t} (perso)`,rounds:t.rounds||3,warm:true,mob:true,cardio:t.z2?25:t.run?15:0,blocks:t.blocks.map(o=>[[...o[k%o.length]]])};
+    S.custom[id]={id,t:`${t.t} (perso)`,rounds:t.rounds||3,warm:true,mob:true,cardio:t.z2?25:t.run?15:(t.cardio||0),blocks:t.blocks.map(o=>[[...o[k%o.length]]])};
   } else S.custom[id]={id,t:"Ma séance",rounds:3,warm:true,mob:true,cardio:0,blocks:[]};
   store.saveLocal(); return id;
 }
@@ -1662,22 +1698,22 @@ function viewSeances(){
       ${q.map((t,i)=>`<div class="row between" style="flex-wrap:nowrap;padding:6px 0;border-top:${i?"1px solid var(--line)":"0"}"><span style="min-width:0"><span class="muted num">${i+1}.</span> ${nameOf(t)}</span>
         <span class="row" style="gap:6px;flex-wrap:nowrap"><button class="mini" data-seqmv="${i}:-1" aria-label="Monter" ${i?"":"disabled"}>↑</button><button class="mini" data-seqmv="${i}:1" aria-label="Descendre" ${i<q.length-1?"":"disabled"}>↓</button><button class="mini" data-seqrm="${i}" aria-label="Retirer" ${q.length>1?"":"disabled"}>✕</button></span></div>`).join("")}
       <select id="seqadd" aria-label="Ajouter une séance au programme"><option value="">Ajouter une séance au programme</option>${typeOptions("")}</select>
-      ${JSON.stringify(q)!==JSON.stringify(SEQ)?`<button class="btn" data-seqreset="1">Revenir au programme de base</button>`:""}
+      ${JSON.stringify(q)!==JSON.stringify(seqBase())?`<button class="btn" data-seqreset="1">Revenir au programme de base</button>`:""}
     </div>
     <div class="card stack" style="gap:8px"><h3>Mes séances perso</h3>
       ${mine.length?mine.map((c,i)=>`<div class="row between" style="flex-wrap:nowrap;padding:6px 0;border-top:${i?"1px solid var(--line)":"0"}"><div class="pl-tx"><b>${esc(c.t)}</b><span>${c.blocks.length} bloc${c.blocks.length>1?"s":""}, ${c.rounds} tours${c.cardio?`, ${c.cardio} min de cardio`:""}</span></div>
         <span class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn" data-edit="${c.id}">Modifier</button><button class="btn primary" data-runc="${c.id}">Lancer</button></span></div>`).join("")
         :`<span class="muted">Tu n'as pas encore de séance perso. Pars de zéro ou d'une séance type.</span>`}
       <button class="btn" data-newc="1">Nouvelle séance vide</button>
-      <select id="newfrom" aria-label="Partir d'une séance type"><option value="">Partir d'une séance type</option>${Object.keys(TPL).filter(k=>TPL[k].blocks.length).map(k=>`<option value="${k}">${esc(TPL[k].t)}</option>`).join("")}</select>
+      <select id="newfrom" aria-label="Partir d'une séance type"><option value="">Partir d'une séance type</option>${Object.keys(TPL).filter(k=>TPL[k].blocks.length).map(k=>`<option value="${k}">${esc(TPL[k].t)}${TPL[k].g&&TPL[k].g!==(fem()?"f":"m")?(TPL[k].g==="f"?" (féminin)":" (masculin)"):""}</option>`).join("")}</select>
     </div>
     ${permRows.length?`<div class="card stack" style="gap:8px"><h3>Remplacements durables</h3>${permRows.map(r=>`<div class="row between" style="flex-wrap:nowrap"><span class="small">${nameOf(r.t)} : ${esc(EX[r.f].n)} remplacé par ${esc(EX[r.to].n)}</span><button class="mini" data-unperm="${r.t}|${r.f}" aria-label="Annuler ce remplacement">✕</button></div>`).join("")}</div>`:""}
   </div>`;
 }
 function typeOptions(sel){
   const opt=k=>`<option value="${k}" ${k===sel?"selected":""}>${esc(tplOf(k).t)}</option>`;
-  const mine=Object.keys(S.custom);
-  return `<optgroup label="Programme">${Object.keys(TPL).map(opt).join("")}</optgroup>${mine.length?`<optgroup label="Mes séances">${mine.map(opt).join("")}</optgroup>`:""}`;
+  const mine=Object.keys(S.custom), me=fem()?"f":"m", own=Object.keys(TPL).filter(k=>(TPL[k].g||me)===me), other=Object.keys(TPL).filter(k=>!own.includes(k));
+  return `<optgroup label="Programme">${own.map(opt).join("")}</optgroup>${mine.length?`<optgroup label="Mes séances">${mine.map(opt).join("")}</optgroup>`:""}<optgroup label="${fem()?"Programme masculin":"Programme féminin"}">${other.map(opt).join("")}</optgroup>`;
 }
 // ---- éditeur ----
 function viewEdit(){
@@ -1703,6 +1739,16 @@ function viewEdit(){
     <p class="muted small" style="margin:0">Dans un bloc, les deux exercices s'enchaînent ; un seul peut être aux haltères pour ne pas les re-régler en cours de bloc.</p>
     <div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-runc="${c.id}" style="flex:2" ${c.blocks.length||c.cardio?"":"disabled"}>Lancer cette séance</button><button class="btn" data-delc="${c.id}" style="flex:1">${S.confirmDel===c.id?"Confirmer":"Supprimer"}</button></div>
   </div>`;
+}
+// change de profil : nouvelle rotation de base (si elle n'a pas été personnalisée) et charges de départ adaptées
+const START_W={m:{H:12,M:8,L:6},f:{H:8,M:6,L:4}};
+function setProfile(v){
+  const st=S.settings, old=st.profile||"m";
+  st.profile=v;
+  if(st.seq&&JSON.stringify(st.seq)===JSON.stringify(old==="f"?SEQ_F:SEQ_M)) delete st.seq;
+  if(JSON.stringify(st.startW)===JSON.stringify(START_W[old])) st.startW={...START_W[v]};
+  if(S.override&&TPL[S.override]?.g&&TPL[S.override].g!==v) S.override=null;
+  store.saveSettings();
 }
 function applyTheme(){
   const t=S.settings.theme||"auto", h=new Date().getHours();
@@ -1738,6 +1784,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.apply){applyChanges(+b.dataset.apply);render();return;}
   if(b.dataset.ignore){S.chat[+b.dataset.ignore].ignored=true;render();return;}
   if(b.id==="undomods"){undoMods();render();return;}
+  if(b.dataset.prof){setProfile(b.dataset.prof);render();return;}
   if(b.dataset.th){S.settings.theme=b.dataset.th;store.saveSettings();applyTheme();render();return;}
   if(b.dataset.lf){S.lf=b.dataset.lf;render();return;}
   if(b.dataset.adj||b.dataset.band||b.dataset.reset){
@@ -1812,6 +1859,7 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;
+  if(t.id==="s_name"){S.settings.name=t.value.trim();store.saveSettings();return;}
   if(t.id==="seqadd"&&t.value){S.settings.seq=[...seqList(),t.value];store.saveSettings();render();return;}
   if(t.id==="newfrom"&&t.value){S.editId=createCustom(t.value);S.tab="edit";render();scrollTo(0,0);return;}
   if(t.id==="ed_name"){const c=S.custom[S.editId];if(c){c.t=t.value.trim()||"Ma séance";store.saveLocal();render();}return;}
