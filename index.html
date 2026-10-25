@@ -95,7 +95,7 @@ textarea{min-height:60px;resize:vertical}
 /* tabs */
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;
   padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
-.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .tabs button{background:none;border:0;padding:12px 4px 10px;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px}
 .tabs button[aria-current="true"]{color:var(--accent)}
 .tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
@@ -237,6 +237,29 @@ const TPL = {
 const SEQ = ["fb_a","z2","fb_b"];
 const DAYS = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
 const DEF = {days:[1,3,5],weekend:false,step:2,fast:12,easy:8,z2:7,startW:{H:12,M:8,L:6}};
+// pauses de 3′ faisables au bureau, debout ou assis, sans matériel
+const PAUSES = [
+  {id:"dos",t:"Hanches et dos",moves:[
+    {n:"Bascule du bassin debout",sec:30,cue:"Mains sur les hanches, enroule puis creuse le bas du dos."},
+    {n:"Fente debout, fléchisseurs de hanche",sec:60,cue:"30 s par côté, serre le fessier de la jambe arrière."},
+    {n:"Rotation du buste assis",sec:30,cue:"Main sur le dossier, tourne lentement de chaque côté."},
+    {n:"Enroulé debout",sec:30,cue:"Descends vertèbre par vertèbre, genoux souples, remonte lentement."},
+    {n:"Ouverture de poitrine bras en W",sec:30,cue:"Coudes pliés, serre les omoplates 2 s, relâche."}]},
+  {id:"nuque",t:"Nuque et épaules",moves:[
+    {n:"Rentrés de menton",sec:30,cue:"Recule la tête comme pour faire un double menton, sans la baisser."},
+    {n:"Inclinaison de la nuque",sec:30,cue:"Oreille vers l'épaule, 15 s par côté, épaules basses."},
+    {n:"Haussements d'épaules",sec:30,cue:"Monte, recule, descends : de grands cercles lents."},
+    {n:"Cercles de bras",sec:30,cue:"Bras tendus, petits puis grands cercles vers l'arrière."},
+    {n:"Étirement des pectoraux",sec:30,cue:"Avant-bras sur l'encadrement de porte, avance la poitrine."},
+    {n:"Extension du haut du dos",sec:30,cue:"Mains derrière la tête, ouvre les coudes et regarde un peu vers le haut."}]},
+  {id:"jambes",t:"Jambes et circulation",moves:[
+    {n:"Montées sur la pointe des pieds",sec:40,cue:"Monte, tiens 1 s, redescends lentement."},
+    {n:"Squats à la chaise",sec:40,cue:"Effleure l'assise et remonte, sans t'asseoir."},
+    {n:"Marche sur place, genoux hauts",sec:40,cue:"Rythme soutenu, bras qui accompagnent."},
+    {n:"Étirement des mollets contre le mur",sec:30,cue:"15 s par côté, talon arrière au sol."},
+    {n:"Respiration lente",sec:30,cue:"Inspire 4 s par le nez, expire 6 s."}]},
+];
+const PAUSE_GOAL = 3;
 // fin de séance : mobilité contre les effets de la position assise
 const MOB = [
   {n:"Fente basse, fléchisseurs de hanche",sec:80,cue:"40 s par côté, fessier serré, bassin vers l'avant."},
@@ -337,14 +360,15 @@ function illus(id){
 }
 
 // ---------- State ----------
-const S = {settings:structuredClone(DEF),sessions:[],tab:"seance",override:null,
+const S = {settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],tab:"seance",override:null,
   ci:{sommeil:"bien",energie:2,temps:null,txt:""},adj:{intensite:0,zones:[],msg:""},
   aiBusy:false,live:null,chat:[],chatBusy:false,debrief:"",storage:"local",sample:null};
 
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $ = s => document.querySelector(s);
 const clampW = w => Math.max(2,Math.min(24,Math.round(w/S.settings.step)*S.settings.step||2));
-const dayKey = d => d.toISOString().slice(0,10);
+// date locale (pas UTC) : une séance à 23 h ou une case de la grille tombent sur le bon jour
+const dayKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const isWeekend = d => d.getDay()===0||d.getDay()===6;
 
 // ---------- Storage (ce téléphone : localStorage, sauvegarde par export JSON) ----------
@@ -354,24 +378,33 @@ const store = {
     await this.load();
   },
   async load(){
-    try{ const raw=localStorage.getItem("creneau"); if(raw){const v=JSON.parse(raw); S.settings={...DEF,...v.settings}; S.sessions=v.sessions||[];} }catch(e){}
+    try{ const raw=localStorage.getItem("creneau"); if(raw){const v=JSON.parse(raw); S.settings={...DEF,...v.settings}; S.sessions=v.sessions||[]; S.pauses=v.pauses||{}; S.tests=v.tests||[];} }catch(e){}
   },
-  async saveLocal(){ try{localStorage.setItem("creneau",JSON.stringify({settings:S.settings,sessions:S.sessions}));}catch(e){} },
+  data(){ return {app:"creneau",v:2,settings:S.settings,sessions:S.sessions,pauses:S.pauses,tests:S.tests}; },
+  async saveLocal(){ try{localStorage.setItem("creneau",JSON.stringify(this.data()));}catch(e){} },
   async saveSession(s){ this.saveLocal(); },
   async saveSettings(){ this.saveLocal(); },
   exportFile(){
-    const blob=new Blob([JSON.stringify({app:"creneau",v:1,settings:S.settings,sessions:S.sessions},null,1)],{type:"application/json"});
+    const blob=new Blob([JSON.stringify(this.data(),null,1)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`creneau-${dayKey(new Date())}.json`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   },
   // fusion par id : les séances déjà présentes sur le téléphone sont gardées, les réglages importés remplacent les actuels
-  async importFile(file){
-    const v=JSON.parse(await file.text());
+  // bilans fusionnés par id, pauses par jour (on garde le maximum)
+  async merge(v){
     const incoming=(v.sessions||[]).filter(s=>s&&s.id&&s.date&&Array.isArray(s.blocks));
     const known=new Set(S.sessions.map(s=>s.id)); const added=incoming.filter(s=>!known.has(s.id));
     S.sessions=[...S.sessions,...added].sort((a,b)=>a.date<b.date?-1:1);
+    const kt=new Set(S.tests.map(t=>t.id));
+    S.tests=[...S.tests,...(v.tests||[]).filter(t=>t&&t.id&&t.date&&!kt.has(t.id))].sort((a,b)=>a.date<b.date?-1:1);
+    for(const [d,p] of Object.entries(v.pauses||{})){ const c=S.pauses[d]||{n:0,walk:0}; S.pauses[d]={n:Math.max(c.n,p.n||0),walk:Math.max(c.walk,p.walk||0)}; }
     if(v.settings) S.settings={...DEF,...v.settings};
     await this.saveLocal(); return added.length;
+  },
+  async importFile(file){ return this.merge(JSON.parse(await file.text())); },
+  async addPause(field,n){
+    const k=dayKey(new Date()), c=S.pauses[k]||{n:0,walk:0};
+    S.pauses[k]={...c,[field]:Math.max(0,c[field]+n)}; await this.saveLocal();
   },
 };
 
@@ -525,7 +558,7 @@ function buildPlan(){
 
 // ---------- IA (le coach ne choisit pas les exos : il renvoie des paramètres que le moteur applique) ----------
 function histSummary(n=6){
-  return S.sessions.slice(-n).map(s=>`${s.date.slice(0,10)} ${TPL[s.type]?.t||s.type} ${Math.round(s.dur/60)}min RPE${s.rpe||"?"}${s.note?` "${s.note}"`:""}`).join("\n")||"aucune séance enregistrée";
+  return S.sessions.slice(-n).map(s=>`${dayKey(new Date(s.date))} ${TPL[s.type]?.t||s.type} ${Math.round(s.dur/60)}min RPE${s.rpe||"?"}${s.note?` "${s.note}"`:""}`).join("\n")||"aucune séance enregistrée";
 }
 function planText(p){
   return p.items.map(it=>it.kind==="pair"?`${it.pair.map(id=>EX[id].n).join(" + ")} ×${it.rounds} tours${it.w?` @${it.w}kg`:""}`:it.title).join("; ");
@@ -577,6 +610,7 @@ const ICON={
   seance:'<svg viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg>',
   semaine:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   histo:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M5 9l7 2 7-2M12 11v4l-3 6M12 15l3 6"/></svg>',
   coach:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
 function anchorIcon(a){
@@ -618,7 +652,7 @@ function chips(name,opts,val){
 }
 function viewSeance(){
   const p=buildPlan(); const now=new Date(); const tpl=TPL[p.type];
-  const doneToday=S.sessions.some(s=>s.date.slice(0,10)===dayKey(now));
+  const doneToday=S.sessions.some(s=>dayKey(new Date(s.date))===dayKey(now));
   const typeOpts=Object.keys(TPL).map(k=>`<option value="${k}" ${k===p.type?"selected":""}>${TPL[k].t}</option>`).join("");
   const tOpts=tpl.long?[[60,"60′"],[45,"45′"],[30,"30′"]]:tpl.short?[[15,"15′"]]:[[35,"35′"],[25,"25′"],[15,"15′"]];
   const offerExpress=p.type!=="express" && (S.ci.energie===1 || S.ci.temps===15);
@@ -649,7 +683,7 @@ function viewSeance(){
 function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
 function plannedDay(d){return S.settings.days.includes(d.getDay())||(S.settings.weekend&&d.getDay()===6);}
 function weekly(){
-  const done=new Set(S.sessions.map(s=>s.date.slice(0,10)));
+  const done=new Set(S.sessions.map(s=>dayKey(new Date(s.date))));
   const target=S.settings.days.length+(S.settings.weekend?1:0);
   const w0=weekStart(new Date()); const weeks=[];
   for(let i=7;i>=0;i--){
@@ -667,7 +701,7 @@ function viewSemaine(){
   const {weeks,target,need,streak}=weekly(); const today=dayKey(new Date()); const cur=weeks.at(-1);
   const st=S.settings;
   // aperçu de la rotation sur les 7 prochains jours
-  let n=S.sessions.filter(s=>SEQ.includes(s.type)).length; const doneToday=S.sessions.some(s=>s.date.slice(0,10)===today);
+  let n=S.sessions.filter(s=>SEQ.includes(s.type)).length; const doneToday=S.sessions.some(s=>dayKey(new Date(s.date))===today);
   const next=[]; for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()+i); if(i===0&&doneToday) continue; if(!plannedDay(d)) continue;
     next.push({d,t:st.weekend&&d.getDay()===6?"full60":SEQ[n++%SEQ.length]});}
   return `<div class="stack">
@@ -683,6 +717,8 @@ function viewSemaine(){
       </div>
       <div class="row muted" style="font-size:12px;margin-top:10px;gap:14px"><span class="row" style="gap:5px"><span class="cell done" style="width:12px"></span>faite</span><span class="row" style="gap:5px"><span class="cell plan" style="width:12px"></span>prévue</span><span>semaine validée dès ${need} séance${need>1?"s":""}</span></div>
     </div>
+    ${(()=>{let n=0,w=0;for(let j=0;j<7;j++){const d=new Date(weekStart(new Date()));d.setDate(d.getDate()+j);const p=S.pauses[dayKey(d)];if(p){n+=p.n;w+=p.walk;}}
+      return `<div class="card row between"><span>Pauses bureau cette semaine</span><span class="num muted">${n} pause${n>1?"s":""} · ${w}′ de marche</span></div>`;})()}
     <div class="card"><h3 style="margin-bottom:6px">À venir</h3>
       <div class="hist">${next.map(x=>`<div class="it"><span>${x.d.toLocaleDateString("fr-FR",{weekday:"long"})}</span><span class="muted">${TPL[x.t].t}</span></div>`).join("")||'<div class="empty">Aucun jour prévu.</div>'}</div>
       <p class="muted" style="font-size:12px;margin:8px 0 0">La rotation avance à chaque séance faite : un jour manqué décale le programme au lieu de le casser.</p>
@@ -726,6 +762,25 @@ function viewHisto(){
     </div>
   </div>`;
 }
+function viewPause(){
+  const t=S.pauses[dayKey(new Date())]||{n:0,walk:0};
+  return `<div class="stack">
+    <div class="header"><div><div class="eyebrow">Au bureau</div><h1>Pauses</h1></div><span class="slot">3′ chacune</span></div>
+    <div class="kpis" style="grid-template-columns:1fr 1fr">
+      <div class="kpi"><b class="num">${t.n}/${PAUSE_GOAL}</b><span>pauses aujourd'hui</span></div>
+      <div class="kpi"><b class="num">${t.walk}′</b><span>de marche aujourd'hui</span></div>
+    </div>
+    <div class="card stack" style="gap:8px"><span class="eyebrow">Ajouter de la marche</span>
+      <div class="row" style="flex-wrap:nowrap"><button class="btn" data-walk="-5" style="flex:1">−5′</button><button class="btn" data-walk="5" style="flex:1">+5′</button><button class="btn" data-walk="10" style="flex:1">+10′</button><button class="btn" data-walk="20" style="flex:1">+20′</button></div>
+      <p class="muted" style="font-size:12px;margin:0">Escaliers, trajet à pied, appel en marchant : tout compte.</p>
+    </div>
+    ${PAUSES.map(r=>`<div class="card stack" style="gap:8px">
+      <div class="row between"><h3>${esc(r.t)}</h3><span class="num muted">${Math.round(r.moves.reduce((a,m)=>a+m.sec,0)/60)}′</span></div>
+      <div class="muted" style="font-size:13px">${r.moves.map(m=>esc(m.n)).join(" · ")}</div>
+      <button class="btn primary" data-pause="${r.id}">Lancer</button></div>`).join("")}
+    <p class="muted" style="font-size:12px;margin:0">Une pause toutes les 1 à 2 heures assis : idéalement le matin, après le déjeuner et en fin d'après-midi.</p>
+  </div>`;
+}
 function viewCoach(){
   const sugg=["Comment progresser au goblet squat si je plafonne à 24 kg ?","Je n'ai que 15 minutes ce matin, quoi faire ?","Quel réglage d'élastique pour le face pull ?"];
   return `<div class="stack">
@@ -753,6 +808,12 @@ function flatten(p){
 }
 let tick=null, wake=null, actx=null;
 function beep(f=880,d=.15){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}}
+function startPause(id){
+  const r=PAUSES.find(x=>x.id===id);
+  S.live={pause:id,plan:{items:[]},steps:r.moves.map(m=>({kind:"timer",ii:-1,label:m.n,sec:m.sec,txt:m.cue,title:r.t})),i:0,t0:Date.now(),left:0,val:null,done:false};
+  navigator.wakeLock?.request("screen").then(w=>wake=w,()=>{});
+  beep(660); clearInterval(tick); tick=setInterval(liveTick,1000); prepStep(); render();
+}
 async function startLive(){
   const plan=buildPlan(); const steps=flatten(plan);
   plan.items.forEach(it=>{if(it.kind==="pair") it.log=Array.from({length:it.rounds},()=>it.pair.map(()=>null));});
@@ -792,6 +853,10 @@ function stepLabel(st){
 function viewLive(){
   const L=S.live; const st=L.steps[L.i]; const pct=Math.round(100*L.i/L.steps.length);
   const head=`<div class="row between"><button class="btn" id="quit">Quitter</button><span class="num" id="clock" style="font-size:20px">${fmt(Math.round((Date.now()-L.t0)/1000))}</span></div><div class="progress"><i style="width:${pct}%"></i></div>`;
+  if(L.done&&L.pause){
+    return `${head}<div class="stage"><div class="eyebrow">Pause terminée</div><div class="what">Retour au bureau.</div>
+      <button class="btn primary big" id="savepause">Compter cette pause</button></div>`;
+  }
   if(L.done){
     return `${head}<div class="stage"><div class="eyebrow">Terminé</div><div class="what">Bien joué.</div>
       <div class="field"><span>Difficulté ressentie (RPE)</span><div class="rpe">${[6,7,8,9,10].map(v=>`<button class="chip" data-rpe="${v}" aria-pressed="${L.rpe===v}">${v}</button>`).join("")}</div></div>
@@ -835,9 +900,9 @@ function endLive(){clearInterval(tick);tick=null;try{wake?.release();}catch(e){}
 function render(){
   const app=$("#app");
   if(S.live){ app.innerHTML=`<div class="live"><div class="wrap">${viewLive()}</div></div>`; return; }
-  const v={seance:viewSeance,semaine:viewSemaine,histo:viewHisto,coach:viewCoach}[S.tab]();
+  const v={seance:viewSeance,pause:viewPause,semaine:viewSemaine,histo:viewHisto,coach:viewCoach}[S.tab]();
   const deb=S.tab==="histo"&&S.debrief?`<div class="note ai" style="margin-bottom:12px"><div class="eyebrow" style="margin-bottom:4px">Débrief du coach</div><div id="debrief" style="white-space:pre-wrap">${esc(S.debrief)}</div></div>`:"";
-  app.innerHTML=`<div class="wrap">${deb}${v}</div><nav class="tabs"><div class="in">${[["seance","Séance"],["semaine","Semaine"],["histo","Historique"],["coach","Coach"]].map(([k,l])=>`<button data-tab="${k}" aria-current="${S.tab===k}">${ICON[k]}${l}</button>`).join("")}</div></nav>`;
+  app.innerHTML=`<div class="wrap">${deb}${v}</div><nav class="tabs"><div class="in">${[["seance","Séance"],["pause","Pause"],["semaine","Semaine"],["histo","Suivi"],["coach","Coach"]].map(([k,l])=>`<button data-tab="${k}" aria-current="${S.tab===k}">${ICON[k]}${l}</button>`).join("")}</div></nav>`;
 }
 
 // ---------- Événements ----------
@@ -852,6 +917,8 @@ document.addEventListener("click",e=>{
   if(b.dataset.we){S.settings.weekend=!S.settings.weekend;store.saveSettings();render();return;}
   if(b.dataset.q){aiChat(b.dataset.q);return;}
   if(b.id==="exp"){store.exportFile();return;}
+  if(b.dataset.pause){startPause(b.dataset.pause);return;}
+  if(b.dataset.walk){store.addPause("walk",+b.dataset.walk).then(render);return;}
   if(b.id==="express"){S.override="express";S.ci.temps=null;render();window.scrollTo(0,0);return;}
   if(!L) return;
   if(b.id==="quit"){endLive();render();return;}
@@ -862,11 +929,12 @@ document.addEventListener("click",e=>{
   if(b.dataset.w){const it=L.plan.items[L.steps[L.i].ii];it.w=clampW(it.w+Number(b.dataset.w)*S.settings.step);render();return;}
   if(b.dataset.rpe){L.rpe=+b.dataset.rpe;L.note=$("#lnote")?.value||L.note;render();return;}
   if(b.id==="save"){L.note=$("#lnote")?.value||"";saveLive();return;}
+  if(b.id==="savepause"){endLive();S.tab="pause";store.addPause("n",1).then(render);return;}
 });
 document.addEventListener("change",e=>{
   const t=e.target;
   if(t.id==="type"){S.override=t.value===autoType()?null:t.value;S.ci.temps=null;render();return;}
-  if(t.id==="imp"&&t.files[0]){store.importFile(t.files[0]).then(n=>{S.impMsg=`${n} séance${n>1?"s":""} importée${n>1?"s":""}.`;},()=>{S.impMsg="Fichier illisible : rien n'a été importé.";}).then(render);return;}
+  if(t.id==="imp"&&t.files[0]){store.importFile(t.files[0]).then(n=>{S.impMsg=`Import terminé : ${n} nouvelle${n>1?"s":""} séance${n>1?"s":""}.`;},()=>{S.impMsg="Fichier illisible : rien n'a été importé.";}).then(render);return;}
   const st=S.settings;
   if(t.id==="s_step"){st.step=Math.max(.5,+t.value||2);}
   else if(t.id==="s_fast"){st.fast=Math.min(16,Math.max(6,+t.value||12));}
