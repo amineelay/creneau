@@ -67,7 +67,10 @@ export default {
       if (path === "/chat") return chat(client, body, cors);
       return json({ error: "not_found" }, 404, cors);
     } catch (e) {
-      return json({ error: "upstream" }, e instanceof Anthropic.RateLimitError ? 429 : 502, cors);
+      // le détail renvoyé vient de l'API Anthropic (type d'erreur, message) : pas de secret dedans
+      console.error(path, e?.status, e?.message);
+      return json({ error: "upstream", status: e?.status ?? null, detail: String(e?.message || e).slice(0, 300) },
+        e instanceof Anthropic.RateLimitError ? 429 : 502, cors);
     }
   },
 };
@@ -132,6 +135,7 @@ function chat(client, body, cors) {
       if (final.stop_reason === "refusal") await send({ text: "\n(Le coach ne peut pas répondre à cette question.)" });
       await send({ done: true });
     } catch (e) {
+      console.error("/chat", e?.status, e?.message);
       await send({ error: e instanceof Anthropic.RateLimitError ? "rate_limited" : "upstream" });
     } finally {
       await w.close();

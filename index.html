@@ -629,7 +629,7 @@ function makeSample({url,code}){
   };
   sample.plan=async prompt=>{
     const res=await fetch(base+"/plan",{method:"POST",headers,body:JSON.stringify({prompt})});
-    if(!res.ok) throw coachErr(res);
+    if(!res.ok){ const e=coachErr(res); try{ e.detail=(await res.json()).detail||""; }catch(x){} throw e; }
     return res.json();
   };
   return sample;
@@ -1016,7 +1016,10 @@ Réponds avec message (2 à 5 phrases, tutoiement, sans emoji ; si tu proposes d
   try{
     const r=await S.sample.plan(prompt), a=S.chat.at(-1);
     a.content=String(r?.message||"").slice(0,1500)||"…"; a.changes=checkChanges(r?.changes,p);
-  }catch(e){ S.chat.at(-1).content=e?.code==="rate_limited"?"Coach saturé, réessaie dans une minute.":"Pas de réponse du coach pour l'instant."; }
+  }catch(e){ S.chat.at(-1).content=e?.code==="rate_limited"?"Coach saturé, réessaie dans une minute."
+    :e?.code==="unauthorized"?"Code d'accès refusé par le relais : vérifie-le dans Semaine → Coach IA."
+    :e instanceof TypeError?"Relais injoignable (réseau ou adresse du proxy)."
+    :`Pas de réponse du coach pour l'instant${e?.detail?` (${e.detail})`:""}.`; }
   S.chatBusy=false; render(); const m=$("#msgs"); m&&m.lastElementChild?.scrollIntoView({block:"end"});
 }
 
