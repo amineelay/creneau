@@ -1470,7 +1470,7 @@ function stepLabel(st){
 }
 function viewLive(){
   const L=S.live; const st=L.steps[L.i]; const pct=Math.round(100*L.i/L.steps.length);
-  const head=`<div class="row between"><button class="btn" id="quit">Quitter</button><span class="num" id="clock" style="font-size:20px">${fmt(Math.round((Date.now()-L.t0)/1000))}</span></div><div class="progress"><i style="width:${pct}%"></i></div>`;
+  const head=`<div class="row between"><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" id="quit">Quitter</button><button class="btn" id="prev" aria-label="Revenir à l'étape précédente" ${L.i===0?"disabled":""}>← Retour</button></div><span class="num" id="clock" style="font-size:20px">${fmt(Math.round((Date.now()-L.t0)/1000))}</span></div><div class="progress"><i style="width:${pct}%"></i></div>`;
   if(L.done&&L.routine){
     const pause=L.routine.kind==="pause";
     return `${head}<div class="stage"><div class="eyebrow">${pause?"Pause terminée":"Routine terminée"}</div><div class="what">${pause?"Retour au bureau.":"Bien joué."}</div>
@@ -1487,7 +1487,7 @@ function viewLive(){
   let body="";
   if(st.kind==="run"||st.kind==="timer"){
     body=`${st.kind==="run"?`<div class="hero-ill">${illus("run")}</div>`:st.id&&POSE[st.id]?`<div class="hero-ill">${illus(st.id)}</div>`:""}<div class="eyebrow">${esc(st.title||"Fin de séance")}</div><div class="what">${esc(st.label)}</div>
-      ${st.kind==="run"?`<div class="tags"><span class="tag kg num">${st.speed} km/h</span></div>`:`<div class="muted">${esc(st.txt)}</div>`}
+      ${st.kind==="run"?`<div class="stepper"><button data-spd="-1" aria-label="Moins vite">−</button><div class="v">${num(st.speed)}<span class="u">km/h</span></div><button data-spd="1" aria-label="Plus vite">+</button></div>`:`<div class="muted">${esc(st.txt)}</div>`}
       <div class="big" id="left">${fmt(L.left)}</div>${st.extra?`<div class="muted">${esc(st.extra)}</div>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="m30" style="flex:1">−30 s</button><button class="btn" id="p30" style="flex:1">+30 s</button><button class="btn primary" id="next" style="flex:2">Passer</button></div>`;
   } else if(st.kind==="weight"){
@@ -1500,7 +1500,9 @@ function viewLive(){
       <button class="btn primary big" id="next">C'est prêt</button>`;
   } else {
     const e=EX[st.id]; const isHold=!!e.hold; const tgt=it.targets[st.k];
-    body=`<div class="row between"><span class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · tour ${st.r+1}/${it.rounds} · ${st.k===0?"A":"B"}</span>${e.eq==="db"?`<span class="tag kg num">${it.w} kg</span>`:e.eq==="band"?`<span class="tag">${anchorIcon(e.a)} · ${num(bandKg(st.id))} kg</span>`:""}</div>
+    body=`<div class="row between"><span class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · tour ${st.r+1}/${it.rounds} · ${st.k===0?"A":"B"}</span>${e.eq==="band"?`<span class="tag">${anchorIcon(e.a)}</span>`:""}</div>
+      ${e.eq==="db"?`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:13px">Charge par haltère</span><span class="adj"><button class="mini" data-w="-1" aria-label="Moins lourd">−</button><span class="tag kg num" style="min-width:56px;text-align:center">${num(it.w)} kg</span><button class="mini" data-w="1" aria-label="Plus lourd">+</button></span></div>`
+        :e.eq==="band"?`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:13px">Élastique</span>${bandAdj(st.id)}</div>`:""}
       <div class="hero-ill">${illus(st.id)}</div>
       <div class="what">${esc(e.n)}</div><div class="muted">${esc(e.cue)} Objectif : ${tgt} ${isHold?"s":"reps"}${e.uni?" par côté":""}.</div>
       <div class="stepper"><button data-v="-1" aria-label="Moins">−</button><div class="v">${L.val}<span class="u">${isHold?"secondes":"reps faites"}${e.uni?" / côté":""}</span></div><button data-v="1" aria-label="Plus">+</button></div>
@@ -1563,6 +1565,15 @@ document.addEventListener("click",e=>{
   if(b.id==="express"){S.override="express";S.ci.temps=null;render();window.scrollTo(0,0);return;}
   if(!L) return;
   if(b.id==="quit"){endLive();render();return;}
+  if(b.id==="prev"){if(L.i>0){L.done=false;L.i--;prepStep();render();}return;}
+  if(b.dataset.spd){
+    // la vitesse change pour cette étape et les suivantes du même bloc à la même allure, et sert de base aux prochaines séances
+    const st=L.steps[L.i], old=st.speed, ns=Math.round(Math.max(3,Math.min(16,old+0.5*Number(b.dataset.spd)))*2)/2;
+    L.steps.forEach((x,j)=>{ if(j>=L.i&&x.kind==="run"&&x.ii===st.ii&&x.speed===old) x.speed=ns; });
+    const set=S.settings, lab=st.label;
+    if(/^Allure modérée/.test(lab)) set.z2=ns; else if(/^Rapide/.test(lab)) set.fast=ns; else if(/^Sprint/.test(lab)) set.fast=Math.max(6,ns-1); else if(/^Footing/.test(lab)) set.easy=ns;
+    store.saveSettings(); render(); return;
+  }
   if(b.id==="next"){advance();return;}
   if(b.id==="m30"){L.left=Math.max(5,L.left-30);render();return;}
   if(b.id==="p30"){L.left+=30;render();return;}
