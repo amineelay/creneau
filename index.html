@@ -70,6 +70,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>span{font-size:12px;color:var(--muted);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0}
 textarea,input[type=text],input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;box-sizing:border-box}
 textarea{min-height:60px;resize:vertical}
 .header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-bottom:4px}
@@ -713,6 +714,7 @@ function wakeStreak(){
   return n;
 }
 
+const defBudget=tpl=>tpl.long?60:tpl.short?15:35;
 // ---------- Moteur déterministe ----------
 function lastBlockWith(id){
   for(let i=S.sessions.length-1;i>=0;i--){
@@ -808,7 +810,7 @@ function estimate(p){
 function buildPlan(){
   const type=S.override||autoType(); const tpl=TPL[type]; const st=S.settings;
   const inten=intensity(); const zones=S.adj.zones||[];
-  const budget=S.ci.temps || (tpl.long?60:tpl.short?15:35);
+  const budget=Math.max(10,S.ci.temps??defBudget(tpl));
   const k=Math.floor(countType(type)/3);
   const used=new Set(); const items=[];
   const wu = tpl.long
@@ -828,36 +830,73 @@ function buildPlan(){
     items.push({kind:"run",title:`Fractionné ${n} × 1′/1′`,steps});
   }
   const md=modsToday(type), sw=id=>md?.swaps?.[id]||id;
-  tpl.blocks.forEach((opts,bix)=>{
-    if(md?.removed?.includes(bix)) return;
-    const pair=opts[k%opts.length].map(sw).map(id=>{const s=sw(swapFor(id,zones,used)); used.add(s); return s;});
-    const rounds=md?.rounds?.[bix]??Math.max(2,tpl.rounds+(inten<0?-1:0));
+  const mkPair=(raw,bix,rounds)=>{
+    const pair=raw.map(sw).map(id=>{const s=sw(swapFor(id,zones,used)); used.add(s); return s;});
     const sug=pair.map(suggest);
     const dbIx=pair.findIndex(id=>EX[id].eq==="db");
     let w=dbIx>=0?sug[dbIx].w:null; if(w&&inten<0&&!sug[dbIx].manual) w=clampW(w-st.step);
-    items.push({kind:"pair",bix,pair,rounds,w,sug,targets:sug.map(x=>x.target)});
+    return {kind:"pair",bix,pair,rounds,w,sug,targets:sug.map(x=>x.target)};
+  };
+  const baseRounds=Math.max(2,(tpl.rounds||3)+(inten<0?-1:0));
+  tpl.blocks.forEach((opts,bix)=>{
+    if(md?.removed?.includes(bix)) return;
+    items.push(mkPair(opts[k%opts.length],bix,md?.rounds?.[bix]??baseRounds));
   });
   if(tpl.fin){
     const n=inten<0?4:6, f=Math.min(16,st.fast+1), steps=[];
     for(let i=0;i<n;i++){steps.push({label:`Sprint ${i+1}/${n}`,sec:30,speed:f});steps.push({label:"Récup marche",sec:30,speed:6});}
     items.push({kind:"run",title:`Finisher ${n} × 30″/30″`,steps});
   }
-  if(tpl.long) items.push({kind:"run",title:"Retour au calme tapis",steps:[{label:"Footing facile",sec:600,speed:st.easy},{label:"Marche",sec:120,speed:5}]});
+  if(tpl.long) items.push({kind:"run",cool:true,title:"Retour au calme tapis",steps:[{label:"Footing facile",sec:600,speed:st.easy},{label:"Marche",sec:120,speed:5}]});
   items.push({kind:"mob",title:"Mobilité posture",moves:tpl.short?routine(MOB.slice(0,3),150):routine(MOB,240)});
   const p={type,title:tpl.t,items,inten,zones,deload:deload(),rest:st.rest||0,mods:!!md};
-  // ajustement au temps dispo : 3 tours, puis on retire des blocs depuis la fin
+  // ajustement au temps dispo (barre 0–120 min)
   const pairs=()=>p.items.filter(i=>i.kind==="pair");
+  const z2=p.items.find(i=>i.z2), relabel=()=>{z2.steps.forEach((s,i)=>s.label=`Allure modérée ${i+1}/${z2.steps.length}`);z2.title=`Endurance ${z2.steps.length*5}′`;};
+  const intervals=p.items.find(i=>i.kind==="run"&&/×/.test(i.title));
+  let cool=p.items.find(i=>i.cool);
   let guard=0;
-  while(estimate(p)>budget && guard++<10){
+  // trop long : tours ramenés à 3, cardio raccourci, blocs retirés depuis la fin, puis 2 tours
+  while(estimate(p)>budget && guard++<40){
     const big=pairs().find(b=>b.rounds>3);
     if(big){big.rounds--;continue;}
-    const z=p.items.find(i=>i.z2&&i.steps.length>2);
-    if(z){z.steps.pop();z.steps.forEach((s,i)=>s.label=`Allure modérée ${i+1}/${z.steps.length}`);z.title=`Endurance ${z.steps.length*5}′`;continue;}
-    const run=p.items.find(i=>i.kind==="run"&&!i.z2&&i.steps.length>4);
-    if(run){run.steps.splice(-2,2);run.title=run.title.replace(/\d+ ×/,`${run.steps.length/2} ×`);continue;}
+    if(z2&&z2.steps.length>2){z2.steps.pop();relabel();continue;}
+    if(intervals&&intervals.steps.length>4){intervals.steps.splice(-2,2);intervals.title=intervals.title.replace(/\d+ ×/,`${intervals.steps.length/2} ×`);continue;}
+    if(cool&&cool.steps[0].sec>120){cool.steps[0].sec-=120;continue;}
     if(pairs().length>1){const ix=p.items.lastIndexOf(pairs().at(-1));p.items.splice(ix,1);continue;}
+    const two=pairs().find(b=>b.rounds>2);
+    if(two){two.rounds--;continue;}
     break;
   }
+  // plus de temps : 4 tours, blocs supplémentaires (autres variantes du programme), cardio plus long, puis 5 tours
+  let extra=0;
+  const addBlock=()=>{
+    for(let i=0;i<tpl.blocks.length*2;i++){
+      const opts=tpl.blocks[i%tpl.blocks.length], raw=opts[(k+1+Math.floor(i/tpl.blocks.length)+extra)%opts.length];
+      if(opts.length<2||raw.some(id=>pairs().some(x=>x.pair.includes(id)))) continue;
+      const it=mkPair(raw,tpl.blocks.length+extra,baseRounds); extra++;
+      p.items.splice(p.items.lastIndexOf(pairs().at(-1))+1,0,it); return true;
+    }
+    return false;
+  };
+  guard=0;
+  while(estimate(p)<budget-3 && guard++<40){
+    const r4=pairs().find(b=>b.rounds<4&&!md?.rounds?.[b.bix]);
+    if(r4){r4.rounds++;if(estimate(p)>budget){r4.rounds--;break;}continue;}
+    if(z2&&z2.steps.length<22){z2.steps.push({...z2.steps[0]});relabel();continue;}
+    if(intervals&&intervals.steps.length<24){const [a,b]=intervals.steps;intervals.steps.push({...a},{...b});const n=intervals.steps.length/2;intervals.steps.forEach((s,i)=>{if(i%2===0)s.label=s.label.replace(/\d+\/\d+/,`${i/2+1}/${n}`);});intervals.title=intervals.title.replace(/\d+ ×/,`${n} ×`);continue;}
+    if(pairs().length&&extra<tpl.blocks.length*2&&addBlock()){ if(estimate(p)>budget+3){p.items.splice(p.items.lastIndexOf(pairs().at(-1)),1);extra--;break;} continue; }
+    const r5=pairs().find(b=>b.rounds<5&&!md?.rounds?.[b.bix]);
+    if(r5){r5.rounds++;if(estimate(p)>budget+3){r5.rounds--;break;}continue;}
+    // enfin du cardio modéré en fin de séance, par tranches de 5′ (jusqu'à 30′)
+    if(!z2){
+      if(!cool){cool={kind:"run",cool:true,title:"Cardio modéré tapis",steps:[{label:"Allure modérée",sec:0,speed:st.z2}],extra:"Tu dois pouvoir parler en phrases complètes."};
+        p.items.splice(p.items.findIndex(i=>i.kind==="mob"),0,cool);}
+      if(cool.steps[0].sec<1800){cool.steps[0].sec+=300;continue;}
+    }
+    break;
+  }
+  if(cool&&!cool.steps[0].sec) p.items.splice(p.items.indexOf(cool),1);
   p.min=estimate(p); return p;
 }
 
@@ -874,7 +913,7 @@ async function aiAdjust(){
   const p=buildPlan();
   const prompt=`Tu es le coach sportif d'Amine (actif de bureau, séances à la maison à 5h50, 3 par semaine, objectif : santé et régularité).
 Séance prévue : ${p.title} — ${planText(p)}.
-Check-in du matin : sommeil ${S.ci.sommeil}, énergie ${S.ci.energie}/3, temps dispo ${S.ci.temps||"normal"} min.
+Check-in du matin : sommeil ${S.ci.sommeil}, énergie ${S.ci.energie}/3, temps dispo ${S.ci.temps??"normal"} min.
 Remarque d'Amine : "${S.ci.txt||"rien"}".
 Historique récent :
 ${histSummary()}
@@ -1032,8 +1071,8 @@ function viewSeance(){
   const p=buildPlan(); const now=new Date(); const tpl=TPL[p.type];
   const doneToday=S.sessions.some(s=>dayKey(new Date(s.date))===dayKey(now));
   const typeOpts=Object.keys(TPL).map(k=>`<option value="${k}" ${k===p.type?"selected":""}>${TPL[k].t}</option>`).join("");
-  const tOpts=tpl.long?[[60,"60′"],[45,"45′"],[30,"30′"]]:tpl.short?[[15,"15′"]]:[[35,"35′"],[25,"25′"],[15,"15′"]];
-  const offerExpress=p.type!=="express" && (S.ci.energie===1 || S.ci.temps===15);
+  const tv=S.ci.temps??defBudget(tpl);
+  const offerExpress=p.type!=="express" && (S.ci.energie===1 || (S.ci.temps!=null&&S.ci.temps<=15));
   const dl={fatigue:"Tes 3 dernières séances étaient très dures (RPE 9 ou plus) : séance allégée pour récupérer.",cycle:"Semaine allégée : après 4 semaines d'entraînement, on lève le pied pour mieux progresser ensuite."}[p.deload];
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">${now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>${esc(p.title)}</h1></div><span class="slot">${p.type==="full60"?"samedi · 1 h":"5:50 → 6:25"}</span></div>
@@ -1043,7 +1082,10 @@ function viewSeance(){
       <div class="row between"><h3>Check-in</h3><select id="type" aria-label="Type de séance" style="width:auto">${typeOpts}</select></div>
       <div class="field"><span>Sommeil</span><div class="row">${chips("sommeil",[["bien","Bien"],["moyen","Moyen"],["mal","Mal"]],S.ci.sommeil)}</div></div>
       <div class="field"><span>Énergie</span><div class="row">${chips("energie",[[1,"Basse"],[2,"Normale"],[3,"Haute"]],S.ci.energie)}</div></div>
-      <div class="field"><span>Temps dispo</span><div class="row">${chips("temps",tOpts,S.ci.temps||tOpts[0][0])}</div></div>
+      <div class="field"><span>Temps dispo : <b id="tval" class="num" style="color:var(--ink)">${tv} min</b></span>
+        <input type="range" id="temps" min="0" max="120" step="5" value="${tv}" aria-label="Temps disponible en minutes">
+        <div class="row between muted num" style="font-size:11px"><span>0</span><span>30</span><span>60</span><span>90</span><span>120</span></div>
+        ${tv<10?`<span class="muted" style="font-size:12px;font-weight:400">Moins de 10 minutes : la séance est réduite au minimum possible.</span>`:""}</div>
       <label class="field"><span>Douleur, gêne ou contrainte</span><textarea id="citxt" placeholder="ex. épaule droite raide, genou ok">${esc(S.ci.txt)}</textarea></label>
       ${S.sample?`<button class="btn" id="aiadj" ${S.aiBusy?"disabled":""}>${S.aiBusy?"Le coach ajuste…":"Adapter avec le coach IA"}</button>`:""}
     </div>
@@ -1492,6 +1534,7 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;
+  if(t.id==="temps"){S.ci.temps=+t.value;const y=scrollY;render();scrollTo(0,y);return;}
   if(t.id==="type"){S.override=t.value===autoType()?null:t.value;S.ci.temps=null;render();return;}
   if(t.id==="imp"&&t.files[0]){store.importFile(t.files[0]).then(n=>{S.impMsg=`Import terminé : ${n} nouvelle${n>1?"s":""} séance${n>1?"s":""}.`;},()=>{S.impMsg="Fichier illisible : rien n'a été importé.";}).then(render);return;}
   const st=S.settings;
@@ -1526,7 +1569,7 @@ function saveCoach(){
 }
 // mémorise les groupes ouverts de la bibliothèque d'un rendu à l'autre
 document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset?.g||S.filtering||S.lq.trim()) return; d.open?S.libOpen.add(d.dataset.g):S.libOpen.delete(d.dataset.g); },true);
-document.addEventListener("input",e=>{ if(e.target.id==="libq"){S.lq=e.target.value;applyLibFilter();return;} if(e.target.id?.startsWith("t_")){const er=$("#t_err"); if(er) er.hidden=true;} if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
+document.addEventListener("input",e=>{ if(e.target.id==="temps"){const v=$("#tval"); if(v) v.textContent=`${e.target.value} min`; return;} if(e.target.id==="libq"){S.lq=e.target.value;applyLibFilter();return;} if(e.target.id?.startsWith("t_")){const er=$("#t_err"); if(er) er.hidden=true;} if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
 document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefault();const v=$("#chatin").value;aiChat(v);} });
 
 S.sample=makeSample(coachConf());
