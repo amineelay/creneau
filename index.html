@@ -89,6 +89,8 @@ textarea{min-height:60px;resize:vertical}
 .tag{font-size:11px;font-weight:600;border-radius:5px;padding:2px 6px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
 .tag.kg{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .tag.up{background:var(--good-soft);color:var(--good);border-color:transparent}
+.mini{border:1px solid var(--line);background:var(--bg);border-radius:7px;width:30px;height:30px;padding:0;font-size:17px;font-weight:700;line-height:1;flex:none}
+.adj{display:inline-flex;align-items:center;gap:4px;flex-wrap:nowrap;white-space:nowrap}
 .note{border-left:3px solid var(--signal);background:var(--signal-soft);padding:10px 12px;border-radius:0 8px 8px 0;font-size:14px}
 .ai{border-left-color:var(--accent);background:var(--accent-soft)}
 
@@ -650,7 +652,7 @@ function lastBlockWith(id){
   return null;
 }
 // double progression : toutes les séries en haut de fourchette (et RPE ≤ 8) → +1 cran
-function suggest(id){
+function autoSuggest(id){
   const e=EX[id], st=S.settings; const last=lastBlockWith(id);
   if(e.eq!=="db"){
     if(!last) return {target:e.hold?e.hold:e.r[1]-2};
@@ -666,6 +668,25 @@ function suggest(id){
   if(top && w>=24) return {w:24,target:e.r[1]+2,note:"Haltères au max : +2 reps et descente en 3 s"};
   if(miss) return {w:clampW(w-st.step),target:e.r[0],down:true};
   return {w,target:Math.min(e.r[1],(Math.max(...reps)||e.r[0])+1)};
+}
+// charge / répétitions choisies à la main : elles priment tant qu'aucune séance plus récente ne les a utilisées,
+// ensuite la progression automatique repart des valeurs réellement faites
+function manual(id){
+  const m=S.settings.loads?.[id]; if(!m) return null;
+  const last=lastBlockWith(id);
+  return last&&last.sess.date>m.at ? null : m;
+}
+function suggest(id){
+  const s=autoSuggest(id), m=manual(id); if(!m) return s;
+  return {...s,w:m.w!=null&&EX[id].eq==="db"?clampW(m.w):s.w,target:m.t??s.target,up:false,down:false,note:null,first:false,manual:true};
+}
+// réglage −/+ depuis le plan ou la liste : part de la valeur affichée, enregistre la nouvelle
+function adjustEx(id,kind,d){
+  const e=EX[id], p=buildPlan(), it=p.items.find(i=>i.kind==="pair"&&i.pair.includes(id)), s=suggest(id);
+  const loads=S.settings.loads||(S.settings.loads={}), m={...(manual(id)||{})};
+  if(kind==="w"){ const cur=(it&&EX[id].eq==="db"?it.w:null)??s.w; m.w=clampW(cur+d*S.settings.step); }
+  else { const cur=it?it.targets[it.pair.indexOf(id)]:s.target; m.t=Math.max(e.hold?10:1,cur+d*(e.hold?5:1)); }
+  m.at=new Date().toISOString(); loads[id]=m; store.saveSettings();
 }
 function swapFor(id,zones,used){
   const e=EX[id]; if(!e.z.some(z=>zones.includes(z))) return id;
@@ -730,7 +751,7 @@ function buildPlan(){
     const rounds=Math.max(2,tpl.rounds+(inten<0?-1:0));
     const sug=pair.map(suggest);
     const dbIx=pair.findIndex(id=>EX[id].eq==="db");
-    let w=dbIx>=0?sug[dbIx].w:null; if(w&&inten<0) w=clampW(w-st.step);
+    let w=dbIx>=0?sug[dbIx].w:null; if(w&&inten<0&&!sug[dbIx].manual) w=clampW(w-st.step);
     items.push({kind:"pair",pair,rounds,w,sug,targets:sug.map(x=>x.target)});
   });
   if(tpl.fin){
@@ -825,7 +846,8 @@ function exLine(id,target,sug){
   if(e.eq==="bw") tags.push(`<span class="tag">poids du corps</span>`);
   if(sug?.up) tags.push(`<span class="tag up">${e.eq==="db"?"+ charge":"+ volume"}</span>`);
   if(sug?.down) tags.push(`<span class="tag">charge allégée</span>`);
-  return `<div class="exw"><div class="thumb">${illus(id)}</div><div class="stack" style="gap:4px"><div class="ex"><span class="n">${esc(e.n)}</span><span class="t">${t}</span></div>${tags.length?`<div class="tags">${tags.join("")}</div>`:""}</div></div>`;
+  if(sug?.manual) tags.push(`<span class="tag">choisi</span>`);
+  return `<div class="exw"><div class="thumb">${illus(id)}</div><div class="stack" style="gap:4px"><div class="ex"><span class="n">${esc(e.n)}</span></div><span class="adj"><button class="mini" data-adj="t" data-ex="${id}" data-d="-1" aria-label="Moins de ${e.hold?"secondes":"répétitions"}">−</button><span class="t" style="min-width:64px;text-align:center">${t}</span><button class="mini" data-adj="t" data-ex="${id}" data-d="1" aria-label="Plus de ${e.hold?"secondes":"répétitions"}">+</button></span>${tags.length?`<div class="tags">${tags.join("")}</div>`:""}</div></div>`;
 }
 function planHTML(p){
   let bi=0;
@@ -842,7 +864,7 @@ function planHTML(p){
     if(it.kind==="text") return `<div class="block"><div class="bmark run">FIN<b>${it.sec/60}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${esc(it.txt)}</div></div></div>`;
     bi++; const note=it.sug.find(s=>s.note);
     return `<div class="block"><div class="bmark">BLOC<b>${String.fromCharCode(64+bi)}</b></div><div class="pair">
-      <div class="row between"><span class="eyebrow">${it.rounds} tours${p.rest?` · repos ${p.rest} s`:" enchaînés, sans repos"}</span>${it.w?`<span class="tag kg num">${it.w} kg</span>`:`<span class="tag">pas d'haltères</span>`}</div>
+      <div class="row between"><span class="eyebrow">${it.rounds} tours${p.rest?` · repos ${p.rest} s`:" enchaînés, sans repos"}</span>${it.w?(()=>{const db=it.pair.find(id=>EX[id].eq==="db");return `<span class="adj"><button class="mini" data-adj="w" data-ex="${db}" data-d="-1" aria-label="Moins lourd">−</button><span class="tag kg num">${it.w} kg</span><button class="mini" data-adj="w" data-ex="${db}" data-d="1" aria-label="Plus lourd">+</button></span>`;})():`<span class="tag">pas d'haltères</span>`}</div>
       ${it.pair.map((id,k)=>exLine(id,it.targets[k],it.sug[k])).join("")}
       ${note?`<div class="muted" style="font-size:13px">${esc(note.note)}</div>`:""}
     </div></div>`;
@@ -882,7 +904,7 @@ function viewSeance(){
       ${planHTML(p)}
     </div>
     <button class="btn primary big" id="start">Démarrer</button>
-    <p class="muted" style="font-size:12px;margin:0">Haltères réglés une fois par bloc : chaque duo associe au plus un exercice haltères à un exercice élastique ou au poids du corps. Repos entre les tours et annonces vocales : onglet Semaine.</p>
+    <p class="muted" style="font-size:12px;margin:0">Règle les kg et les répétitions avec − / + : ton choix est gardé pour la prochaine séance, puis la progression automatique repart de ce que tu as réellement fait. Repos et annonces vocales : onglet Semaine.</p>
   </div>`;
 }
 function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
@@ -941,6 +963,13 @@ function viewSemaine(){
       <div class="field"><span>Charges de départ (kg par haltère) : lourd / moyen / léger</span><div class="row" style="flex-wrap:nowrap">
         ${["H","M","L"].map(t=>`<input type="number" data-sw="${t}" min="2" max="24" step="${st.step}" value="${st.startW[t]}" aria-label="Charge ${t}">`).join("")}</div></div>
     </div>
+    <div class="card"><details id="charges"><summary style="font-weight:600;cursor:pointer;padding:2px 0"><span style="font-family:var(--f-display);font-size:18px">Charges et répétitions</span> <span class="muted num" style="font-size:12px">(${Object.keys(EX).length} exercices)</span></summary>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">Ce que la prochaine séance proposera pour chaque exercice. « choisi » = réglé par toi ; ↺ rend la main à la progression automatique.</p>
+      ${[["db","Haltères"],["band","Élastique"],["bw","Poids du corps"]].map(([eq,l])=>`<div class="eyebrow" style="margin-top:12px">${l}</div>`+Object.keys(EX).filter(id=>EX[id].eq===eq).sort((a,b)=>EX[a].n.localeCompare(EX[b].n,"fr")).map(id=>{const e=EX[id],s=suggest(id);
+        return `<div class="row between" style="flex-wrap:nowrap;padding:6px 0;border-top:1px solid var(--line);gap:6px"><span style="min-width:0;font-size:14px">${esc(e.n)}${s.manual?` <span class="tag">choisi</span> <button class="mini" data-reset="${id}" aria-label="Revenir à l'automatique" style="width:26px;height:26px;font-size:14px">↺</button>`:""}</span>
+          <span class="row" style="gap:8px;flex-wrap:nowrap">${eq==="db"?`<span class="adj"><button class="mini" data-adj="w" data-ex="${id}" data-d="-1" aria-label="Moins lourd">−</button><span class="num" style="min-width:40px;text-align:center">${s.w} kg</span><button class="mini" data-adj="w" data-ex="${id}" data-d="1" aria-label="Plus lourd">+</button></span>`:""}
+          <span class="adj"><button class="mini" data-adj="t" data-ex="${id}" data-d="-1" aria-label="Moins">−</button><span class="num" style="min-width:34px;text-align:center">${s.target}${e.hold?" s":""}</span><button class="mini" data-adj="t" data-ex="${id}" data-d="1" aria-label="Plus">+</button></span></span></div>`;}).join("")).join("")}
+    </details></div>
     <div class="card stack"><h3>Données</h3>
       <p class="muted" style="font-size:13px;margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais Cloudflare.</p>
       <p class="muted" id="bk_state" style="font-size:12px;margin:0">${esc(backupText())}</p>
@@ -1229,6 +1258,8 @@ document.addEventListener("click",e=>{
   if(b.dataset.we){S.settings.weekend=!S.settings.weekend;store.saveSettings();render();return;}
   if(b.dataset.q){aiChat(b.dataset.q);return;}
   if(b.id==="exp"){store.exportFile();return;}
+  if(b.dataset.adj){adjustEx(b.dataset.ex,b.dataset.adj,+b.dataset.d);const y=scrollY,open=$("#charges")?.open;render();if(open)$("#charges").open=true;scrollTo(0,y);return;}
+  if(b.dataset.reset){delete S.settings.loads[b.dataset.reset];store.saveSettings();const y=scrollY;render();$("#charges").open=true;scrollTo(0,y);return;}
   if(b.dataset.routine){startRoutine(getRoutine(b.dataset.routine));return;}
   if(b.dataset.cz){const z=b.dataset.cz;S.cz=S.cz.includes(z)?S.cz.filter(x=>x!==z):[...S.cz,z];render();return;}
   if(b.dataset.cd){S.cd=+b.dataset.cd;render();return;}
@@ -1247,7 +1278,10 @@ document.addEventListener("click",e=>{
   if(b.id==="m30"){L.left=Math.max(5,L.left-30);render();return;}
   if(b.id==="p30"){L.left+=30;render();return;}
   if(b.dataset.v){L.val=Math.max(0,L.val+Number(b.dataset.v)*(EX[L.steps[L.i].id].hold?5:1));render();return;}
-  if(b.dataset.w){const it=L.plan.items[L.steps[L.i].ii];it.w=clampW(it.w+Number(b.dataset.w)*S.settings.step);render();return;}
+  if(b.dataset.w){const it=L.plan.items[L.steps[L.i].ii];it.w=clampW(it.w+Number(b.dataset.w)*S.settings.step);
+    // gardé aussi hors séance enregistrée, au cas où la séance serait quittée avant la fin
+    const db=it.pair.find(id=>EX[id].eq==="db"), loads=S.settings.loads||(S.settings.loads={});
+    loads[db]={...(manual(db)||{}),w:it.w,at:new Date().toISOString()}; store.saveSettings(); render();return;}
   if(b.dataset.rpe){L.rpe=+b.dataset.rpe;L.note=$("#lnote")?.value||L.note;render();return;}
   if(b.id==="save"){L.note=$("#lnote")?.value||"";saveLive();return;}
   if(b.id==="saveroutine"){const r=L.routine, min=Math.max(1,Math.round(routineSec(r.items)/60));endLive();S.tab="pause";
