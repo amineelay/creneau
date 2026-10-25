@@ -31,7 +31,7 @@ Puis ouvrir http://localhost:8080. Pour le Worker en local (KV simulé) : créer
 
 - **App** : chaque push sur `main` publie sur GitHub Pages (`.github/workflows/pages.yml`).
   Activer une fois : Settings → Pages → Source : *GitHub Actions*.
-  Après une modification de l'app, incrémenter `CACHE_VERSION` dans `sw.js`, sinon les téléphones
+  Après une modification de l'app, incrémenter `CACHE_VERSION` dans `sw.js` et `APP_VERSION` dans `index.html`, sinon les téléphones
   gardent l'ancienne version en cache.
 - **Coach IA** (`worker/`, Cloudflare Worker qui garde la clé API Anthropic) :
 

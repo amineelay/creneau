@@ -1,6 +1,6 @@
-// Service worker : tout le shell est précaché, l'app tourne hors ligne.
-// Incrémenter CACHE_VERSION à chaque déploiement qui modifie un de ces fichiers.
-const CACHE_VERSION = "creneau-v14";
+// Service worker : l'app tourne hors ligne, et récupère toujours la dernière version quand il y a du réseau.
+// Incrémenter CACHE_VERSION (et APP_VERSION dans index.html) à chaque déploiement.
+const CACHE_VERSION = "creneau-v15";
 const SHELL = [
   "./",
   "index.html",
@@ -12,8 +12,11 @@ const SHELL = [
   "fonts/archivo-wdth.woff2",
 ];
 
+// { cache: "reload" } : on contourne le cache HTTP du navigateur, sinon une ancienne page peut être précachée
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE_VERSION)
+    .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
@@ -24,11 +27,18 @@ self.addEventListener("activate", e => {
   );
 });
 
-// Cache-first pour les fichiers de l'app ; le reste (proxy du coach) passe directement au réseau.
 self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request))
-  );
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== location.origin) return;
+  // la page elle-même : réseau d'abord (dernière version), cache seulement hors ligne
+  if (req.mode === "navigate" || url.pathname.endsWith("/index.html")) {
+    e.respondWith(
+      fetch(req, { cache: "no-store" })
+        .then(res => { const copy = res.clone(); caches.open(CACHE_VERSION).then(c => c.put("index.html", copy)); return res; })
+        .catch(() => caches.match("index.html"))
+    );
+    return;
+  }
+  // le reste (police, icônes) : cache d'abord
+  e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req)));
 });

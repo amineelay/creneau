@@ -585,6 +585,7 @@ function illus(id){
 }
 
 // ---------- State ----------
+const APP_VERSION = 15; // à garder égal au numéro de CACHE_VERSION dans sw.js
 const S = {custom:{},pick:null,planOpen:new Set(),lf:"all",lq:"",libOpen:new Set(),settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],mob:{},mods:(()=>{try{return JSON.parse(localStorage.getItem("creneau.mods"));}catch(e){return null;}})(),cz:["hanches","dos"],cd:10,cs:"dyn",tab:"seance",override:null,
   ci:{sommeil:"bien",energie:2,temps:null,txt:""},adj:{intensite:0,zones:[],msg:""},
   aiBusy:false,live:null,chat:[],chatBusy:false,debrief:"",storage:"local",sample:null};
@@ -1303,6 +1304,7 @@ function viewReglages(){
     <div class="card stack"><h3>Données</h3>
       <p class="muted small" style="margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais.</p>
       <p class="muted small" id="bk_state" style="margin:0">${esc(backupText())}</p>
+      <p class="muted small" style="margin:0">Version ${APP_VERSION} de l'app.</p>
       ${BOOTS?`<p class="muted small" style="margin:0">Mémoire de l'app : ${BOOTS.n} ouverture${BOOTS.n>1?"s":""} depuis le ${new Date(BOOTS.since).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}${BOOTS.n===1?" (si ce chiffre reste à 1 à chaque ouverture, le téléphone efface la mémoire de l'app)":""}.</p>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label>${backup.conf()?`<button class="btn" id="rst" style="flex:1">Restaurer</button>`:""}</div>
       ${S.impMsg?`<div class="muted small">${esc(S.impMsg)}</div>`:""}
@@ -1918,7 +1920,12 @@ render();
 })();
 // app mise en arrière-plan : on envoie tout de suite la sauvegarde en attente
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&backup.timer) backup.push(); if(!document.hidden) applyTheme(); });
-if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  // on vérifie s'il existe une nouvelle version à chaque retour dans l'app ; quand elle prend la main, on recharge une fois (jamais en pleine séance)
+  const hadCtrl=!!navigator.serviceWorker.controller; let reloaded=false;
+  navigator.serviceWorker.register("sw.js").then(r=>document.addEventListener("visibilitychange",()=>{ if(!document.hidden) r.update().catch(()=>{}); })).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(!hadCtrl||reloaded||S.live) return; reloaded=true; location.reload(); });
+}
 </script>
 
 </body></html>
