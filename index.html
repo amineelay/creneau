@@ -945,23 +945,60 @@ function planForCoach(p){
   return pairs.map(it=>`Bloc ${it.bix+1} (${it.rounds} tours) : `+it.pair.map((id,k)=>{const e=EX[id];
     return `${id} = ${e.n} [${EQL[e.eq]}]${e.eq==="db"&&it.w?` ${num(it.w)} kg`:e.eq==="band"?` ${num(bandKg(id))} kg`:""} × ${it.targets[k]}${e.hold?" s":" reps"}${e.uni?" par côté":""}`;}).join(" ; ")).join("\n");
 }
-function checkChanges(list,p){
-  const pairs=p.items.filter(i=>i.kind==="pair"), inPlan=id=>pairs.find(i=>i.pair.includes(id)), out=[];
+// id du catalogue à partir d'un id ou d'un nom (le modèle renvoie parfois le nom)
+function resolveEx(x){
+  if(EX[x]) return x; const n=norm(x||""); if(!n) return null;
+  return Object.keys(EX).find(id=>norm(EX[id].n)===n)||Object.keys(EX).find(id=>norm(EX[id].n).startsWith(n))||null;
+}
+const famille=id=>norm(EX[id].n).split(/[\s-]+/)[0];
+// remplaçant valide : même type de mouvement, pas une variante du même exercice, pas déjà dans la séance,
+// pas d'haltères si l'autre exercice du bloc en a déjà, et rien sur une zone à éviter
+function autoSub(ex,it,pairs,banned=[]){
+  const e=EX[ex], partnerDb=it.pair.some(x=>x!==ex&&EX[x].eq==="db"), zones=S.adj.zones||[];
+  const ok=id=>id!==ex&&!pairs.some(q=>q.pair.includes(id))&&!(partnerDb&&EX[id].eq==="db")&&famille(id)!==famille(ex)
+    &&!banned.includes(famille(id))&&!EX[id].z.some(z=>zones.includes(z));
+  const pool=Object.keys(EX).filter(ok);
+  return pool.find(id=>EX[id].p===e.p&&EX[id].eq===e.eq)||pool.find(id=>EX[id].p===e.p)||null;
+}
+function checkChanges(list,p,q=""){
+  const pairs=p.items.filter(i=>i.kind==="pair"), inPlan=id=>pairs.find(i=>i.pair.includes(id)), out=[], skipped=[];
   const bloc=n=>pairs.find(i=>i.bix===n-1), names=it=>it.pair.map(x=>EX[x].n).join(" + ");
+  const touched=new Set(), taken=new Set();
+  // un exercice demandé qui n'est pas dans la séance → la variante présente (ex. « pompes » → « pompes serrées »)
+  const inSeance=id=>id&&(inPlan(id)?id:pairs.flatMap(i=>i.pair).find(x=>famille(x)===famille(id)));
+  const pushSwap=(ex,to,auto)=>{ const it=inPlan(ex); touched.add(ex); taken.add(to);
+    it.pair=it.pair.map(x=>x===ex?to:x);
+    out.push({op:"swap",ex,to,label:`Remplacer ${EX[ex].n} par ${EX[to].n}${auto?" (choisi par l'app)":""}`}); };
+  const work={...p,items:p.items.map(i=>i.kind==="pair"?{...i,pair:[...i.pair]}:i)}; pairs.length=0; pairs.push(...work.items.filter(i=>i.kind==="pair"));
   for(const c of (Array.isArray(list)?list:[]).slice(0,8)){
-    const e=EX[c.ex];
-    if(c.op==="swap"){ const it=inPlan(c.ex); if(!it||!EX[c.to]||inPlan(c.to)) continue;
-      if(it.pair.map(x=>x===c.ex?c.to:x).filter(x=>EX[x].eq==="db").length>1) continue;
-      out.push({op:"swap",ex:c.ex,to:c.to,label:`Remplacer ${e.n} par ${EX[c.to].n}`}); }
+    const ex=c.op==="swap"?inSeance(resolveEx(c.ex)):resolveEx(c.ex), e=EX[ex];
+    if(c.op==="swap"){
+      const it=inPlan(ex); if(!it){ skipped.push(`${c.ex} n'est pas dans la séance du jour`); continue; }
+      if(touched.has(ex)) continue;
+      const to=resolveEx(c.to);
+      const valid=to&&!inPlan(to)&&!taken.has(to)&&famille(to)!==famille(ex)&&it.pair.map(x=>x===ex?to:x).filter(x=>EX[x].eq==="db").length<=1;
+      if(valid){ pushSwap(ex,to,false); continue; }
+      const alt=autoSub(ex,it,pairs,[famille(ex)]);
+      if(alt) pushSwap(ex,alt,true); else skipped.push(`pas de remplaçant possible pour ${e.n}`);
+    }
     else if(c.op==="reps"){ if(!e) continue; const v=Math.round(c.value); if(v<(e.hold?10:1)||v>(e.hold?180:40)) continue;
-      out.push({op:"reps",ex:c.ex,value:v,label:`${e.n} : ${v}${e.hold?" s":" reps"}`}); }
+      out.push({op:"reps",ex,value:v,label:`${e.n} : ${v}${e.hold?" s":" reps"}`}); }
     else if(c.op==="kg"){ if(!e||e.eq==="bw"||!(c.value>0)) continue; const v=e.eq==="band"?nearestBand(c.value):clampW(c.value);
-      out.push({op:"kg",ex:c.ex,value:v,label:`${e.n} : ${e.eq==="band"?"élastique ":""}${num(v)} kg`}); }
+      out.push({op:"kg",ex,value:v,label:`${e.n} : ${e.eq==="band"?"élastique ":""}${num(v)} kg`}); }
     else if(c.op==="rounds"){ const it=bloc(c.bloc), v=Math.round(c.value); if(!it||v<1||v>6) continue;
       out.push({op:"rounds",bloc:c.bloc,value:v,label:`${names(it)} : ${v} tours`}); }
     else if(c.op==="remove"){ const it=bloc(c.bloc); if(!it||pairs.length<2||out.some(o=>o.op==="remove")) continue;
       out.push({op:"remove",bloc:c.bloc,label:`Retirer le bloc ${names(it)}`}); }
   }
+  // filet de sécurité : « pas de pompes », « sans fentes », « remplace le rowing »… même si le coach n'a rien proposé
+  const nq=norm(q);
+  if(/\b(pas de|pas d|sans|remplace|enleve|retire|evite|pas envie de|marre de|interdit)\b/.test(nq)){
+    for(const it of pairs) for(const ex of [...it.pair]){
+      const f=famille(ex); if(f.length<4||touched.has(ex)||!nq.includes(f.replace(/s$/,""))) continue;
+      const alt=autoSub(ex,it,pairs,[f]); if(alt) pushSwap(ex,alt,true); else skipped.push(`pas de remplaçant possible pour ${EX[ex].n}`);
+    }
+  }
+  out.skipped=skipped;
   return out;
 }
 function saveMods(){ try{ S.mods?localStorage.setItem("creneau.mods",JSON.stringify(S.mods)):localStorage.removeItem("creneau.mods"); }catch(e){} }
@@ -1007,6 +1044,9 @@ Règles pour les changements :
 - au plus un exercice aux haltères par bloc (il ne règle les haltères qu'entre deux blocs) ;
 - kg entre 2 et 24 par crans de ${num(S.settings.step)} kg ; élastiques disponibles : ${bandList().join(", ")} kg (op kg sur un exercice élastique = choix de l'élastique) ; répétitions entre 1 et 40 ; 10 à 180 secondes pour les gainages ; 1 à 6 tours ;
 - propose des changements seulement si Amine le demande ou signale une douleur, une fatigue ou une contrainte de temps ; sinon changes = [] ;
+- s'il refuse un exercice (« pas de X », « sans X », « remplace X »), remplace par swap CHAQUE exercice concerné de la séance (toutes ses variantes) par un exercice du même type de mouvement qui n'est pas une variante du même exercice ;
+- le remplaçant ne doit pas déjà être dans la séance ; si l'autre exercice du bloc est aux haltères, le remplaçant ne doit pas être aux haltères ;
+- utilise toujours les id du catalogue dans ex et to, jamais les noms ;
 - si une douleur est vive ou inhabituelle, conseille de consulter.
 Opérations (champs inutilisés : "" ou 0) : swap (ex = id dans la séance, to = id du catalogue), reps (ex, value), kg (ex, value), rounds (bloc = numéro du bloc, value), remove (bloc).
 Historique récent :
@@ -1015,7 +1055,7 @@ ${conv?`Conversation :\n${conv}\n`:""}Amine : ${q}
 Réponds avec message (2 à 5 phrases, tutoiement, sans emoji ; si tu proposes des changements, dis pourquoi en une phrase) et changes.`;
   try{
     const r=await S.sample.plan(prompt), a=S.chat.at(-1);
-    a.content=String(r?.message||"").slice(0,1500)||"…"; a.changes=checkChanges(r?.changes,p);
+    a.content=String(r?.message||"").slice(0,1500)||"…"; a.changes=checkChanges(r?.changes,p,q); a.skipped=a.changes.skipped;
   }catch(e){ S.chat.at(-1).content=e?.code==="rate_limited"?"Coach saturé, réessaie dans une minute."
     :e?.code==="unauthorized"?"Code d'accès refusé par le relais : vérifie-le dans Semaine → Coach IA."
     :e instanceof TypeError?"Relais injoignable (réseau ou adresse du proxy)."
@@ -1340,9 +1380,10 @@ function applyLibFilter(){
 }
 function viewCoach(){
   const sugg=["J'ai mal au genou ce matin, adapte ma séance","Je n'ai que 15 minutes ce matin, raccourcis la séance","Rends la séance un peu plus dure, je me sens en forme","Comment progresser au goblet squat si je plafonne à 24 kg ?"];
-  const prop=(m,i)=>m.changes?.length?`<div class="card stack" style="gap:6px;align-self:flex-start;max-width:88%;padding:12px">
-    <span class="eyebrow">Changements proposés</span>${m.changes.map(c=>`<div style="font-size:14px">• ${esc(c.label)}</div>`).join("")}
-    ${m.applied?`<span class="tag up" style="align-self:flex-start">Appliqué à la séance du jour</span>`:m.ignored?`<span class="muted" style="font-size:13px">Ignoré</span>`:`<div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-apply="${i}" style="flex:1">Appliquer</button><button class="btn" data-ignore="${i}" style="flex:1">Ignorer</button></div>`}</div>`:"";
+  const prop=(m,i)=>m.changes?.length||m.skipped?.length?`<div class="card stack" style="gap:6px;align-self:flex-start;max-width:88%;padding:12px">
+    <span class="eyebrow">Changements proposés</span>${(m.changes||[]).map(c=>`<div style="font-size:14px">• ${esc(c.label)}</div>`).join("")}
+    ${(m.skipped||[]).map(t=>`<div class="muted" style="font-size:13px">Non retenu : ${esc(t)}</div>`).join("")}
+    ${!m.changes?.length?"":m.applied?`<span class="tag up" style="align-self:flex-start">Appliqué à la séance du jour</span>`:m.ignored?`<span class="muted" style="font-size:13px">Ignoré</span>`:`<div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-apply="${i}" style="flex:1">Appliquer</button><button class="btn" data-ignore="${i}" style="flex:1">Ignorer</button></div>`}</div>`:"";
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">IA</div><h1>Coach</h1></div></div>
     ${!S.sample?`<div class="note stack" style="gap:10px"><span>Coach pas encore configuré sur ce téléphone. Renseigne l'adresse du proxy et ton code d'accès dans l'onglet Semaine. Le programme et le suivi fonctionnent sans lui.</span><button class="btn" data-tab="semaine" data-focus="c_url">Configurer le coach</button></div>`:`
