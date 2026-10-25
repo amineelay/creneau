@@ -1,0 +1,12 @@
+name = "creneau-coach"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# origines autorisées (séparées par des virgules) : l'URL GitHub Pages + le serveur local de test
+ALLOWED_ORIGINS = "https://amineelay.github.io,http://localhost:8080"
+
+# Secrets (jamais dans ce fichier) :
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put ACCESS_CODE
