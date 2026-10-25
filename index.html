@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Créneau 5:50</title>
-<meta name="description" content="Séances maison 5:50 → 6:25 : programme, séance en direct, suivi et coach.">
-<meta name="theme-color" content="#F3F4F7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0D1015" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Séances maison à 5h50 : programme du jour, séance guidée, mobilité, progrès et coach.">
+<meta name="theme-color" content="#141A33">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,147 +13,174 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="preload" href="fonts/ibm-plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo-wdth.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+// thème posé avant le premier affichage : sombre la nuit (20 h à 8 h), sinon celui du téléphone
+(function(){try{var t=(JSON.parse(localStorage.getItem("creneau")||"{}").settings||{}).theme||"auto",h=new Date().getHours();
+var d=t==="dark"||(t==="auto"&&(h<8||h>=20||matchMedia("(prefers-color-scheme: dark)").matches));
+document.documentElement.dataset.theme=d?"dark":"light";}catch(e){document.documentElement.dataset.theme="dark";}})();
+</script>
 <style>
-@font-face{font-family:"Barlow Condensed";font-weight:500;font-style:normal;font-display:swap;src:url(fonts/barlow-condensed-500.woff2) format("woff2")}
-@font-face{font-family:"Barlow Condensed";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/barlow-condensed-600.woff2) format("woff2")}
-@font-face{font-family:"Barlow Condensed";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/barlow-condensed-700.woff2) format("woff2")}
-@font-face{font-family:"IBM Plex Sans";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/ibm-plex-sans-400.woff2) format("woff2")}
-@font-face{font-family:"IBM Plex Sans";font-weight:500;font-style:normal;font-display:swap;src:url(fonts/ibm-plex-sans-500.woff2) format("woff2")}
-@font-face{font-family:"IBM Plex Sans";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/ibm-plex-sans-600.woff2) format("woff2")}
-@font-face{font-family:"IBM Plex Mono";font-weight:500;font-style:normal;font-display:swap;src:url(fonts/ibm-plex-mono-500.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(fonts/archivo-wdth.woff2) format("woff2")}
 :root{padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 </style>
 <style>
-/* Layout: one-column phone app, fixed tab bar at the bottom, live-session mode takes the whole screen */
+/* « Aube » : pensée pour 5h50. Sombre la nuit, une seule couleur d'action (ambre, lever de soleil),
+   une seule famille (Archivo) dont on fait varier la largeur : étroite et grasse pour titres et chiffres, normale pour le texte. */
 :root{
-  --bg:#F3F4F7; --surface:#FFFFFF; --ink:#141820; --muted:#5D6572; --line:#DDE1E8;
-  --accent:#2F55E0; --accent-ink:#FFFFFF; --accent-soft:#E4EAFF;
-  --signal:#C98A00; --signal-soft:#FFF3D6; --good:#1F8A4C; --good-soft:#DDF3E5; --warn:#B4401F;
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  --r:10px;
+  --bg:#E9ECF5; --surface:#FFFFFF; --ink:#18203D; --muted:#596282; --line:#D4D9E7;
+  --accent:#F5B841; --accent-ink:#18203D; --accent-text:#8A5A00; --accent-soft:#FBE8BC;
+  --signal:#3F67D8; --signal-soft:#DFE7FF; --good:#1D7A47; --good-soft:#D8EFE1; --warn:#B4401F;
+  --f-display:"Archivo",system-ui,sans-serif; --f-body:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"Archivo",system-ui,sans-serif;
+  --r:16px; --tabh:62px; color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D1015; --surface:#161A22; --ink:#E7EAF0; --muted:#98A1AE; --line:#272D38;
-  --accent:#7D98FF; --accent-ink:#0D1015; --accent-soft:#1D2540;
-  --signal:#F2B83A; --signal-soft:#2E2610; --good:#4FC283; --good-soft:#12291C; --warn:#F08A6A; color-scheme:dark}}
+@media (prefers-color-scheme: dark){:root:not([data-theme]){
+  --bg:#141A33; --surface:#1E2647; --ink:#E9ECF5; --muted:#9AA3C4; --line:#2E3864;
+  --accent:#F5B841; --accent-ink:#141A33; --accent-text:#F5B841; --accent-soft:#3B3527;
+  --signal:#8FB3FF; --signal-soft:#24305B; --good:#6FD39B; --good-soft:#1A3A3A; --warn:#FF9C7A; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0D1015; --surface:#161A22; --ink:#E7EAF0; --muted:#98A1AE; --line:#272D38;
-  --accent:#7D98FF; --accent-ink:#0D1015; --accent-soft:#1D2540;
-  --signal:#F2B83A; --signal-soft:#2E2610; --good:#4FC283; --good-soft:#12291C; --warn:#F08A6A; color-scheme:dark}
+  --bg:#141A33; --surface:#1E2647; --ink:#E9ECF5; --muted:#9AA3C4; --line:#2E3864;
+  --accent:#F5B841; --accent-ink:#141A33; --accent-text:#F5B841; --accent-soft:#3B3527;
+  --signal:#8FB3FF; --signal-soft:#24305B; --good:#6FD39B; --good-soft:#1A3A3A; --warn:#FF9C7A; color-scheme:dark}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
-.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 96px}
-h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.01em;text-wrap:balance;margin:0}
-h1{font-size:34px;line-height:1}
-h2{font-size:22px}
-h3{font-size:18px}
-.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600}
-.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px calc(var(--tabh) + 32px)}
+.wrap.has-start{padding-bottom:calc(var(--tabh) + 110px)}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.005em}
+h1{font-size:44px;line-height:.95;font-weight:800;font-stretch:68%}
+h2{font-size:24px;font-weight:750;font-stretch:80%}
+h3{font-size:20px;font-weight:750;font-stretch:82%}
+.eyebrow{font-size:14px;color:var(--muted);font-weight:500}
+.sub{font-size:15px;color:var(--muted);margin-top:6px}
+.num{font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
-.stack{display:flex;flex-direction:column;gap:12px}
+.small{font-size:13px}
+.stack{display:flex;flex-direction:column;gap:14px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .between{justify-content:space-between}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card{background:var(--surface);border-radius:var(--r);padding:16px}
 button{font:inherit;color:inherit;cursor:pointer}
-button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 14px;font-weight:600}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.btn{min-height:44px;border:1px solid var(--line);background:transparent;border-radius:12px;padding:10px 16px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn.big{width:100%;padding:15px;font-size:17px;font-family:var(--f-display);letter-spacing:.04em;text-transform:uppercase}
-.btn:disabled{opacity:.5;cursor:default}
-.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500}
+.btn.big{display:flex;width:100%;min-height:58px;font-size:20px;font-weight:800;font-stretch:78%;border-radius:16px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:active:not(:disabled),.chip:active,.mini:active,.icon-btn:active{transform:scale(.97)}
+.icon-btn{width:44px;height:44px;border-radius:12px;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;flex:none}
+.icon-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.chip{min-height:38px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 14px;font-size:15px;font-weight:500;color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--bg);border-radius:12px;padding:4px}
+.seg .chip{border:0;border-radius:9px;min-height:40px;padding:6px 4px}
 .field{display:flex;flex-direction:column;gap:6px}
-.field>span{font-size:12px;color:var(--muted);font-weight:600}
-input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0}
-textarea,input[type=text],input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;box-sizing:border-box}
-textarea{min-height:60px;resize:vertical}
-.header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-bottom:4px}
-.slot{font-family:var(--f-num);font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:3px 7px;white-space:nowrap}
+.field>span{font-size:14px;color:var(--muted);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0;height:30px}
+textarea,input[type=text],input[type=number],input[type=search],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;box-sizing:border-box;min-height:44px}
+textarea{min-height:72px;resize:vertical}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 
-/* plan */
-.block{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
-.block:first-child{border-top:0;padding-top:2px}
-.bmark{font-family:var(--f-display);font-weight:700;font-size:13px;text-align:center;border-radius:8px;padding:6px 0;background:var(--accent-soft);color:var(--accent);line-height:1.1}
-.bmark b{display:block;font-size:20px}
-.bmark.run{background:var(--signal-soft);color:var(--signal)}
-.pair{display:flex;flex-direction:column;gap:6px;min-width:0}
+/* aujourd'hui */
+.typesel{position:relative;display:inline-flex;align-items:center;gap:4px;align-self:flex-start;color:var(--signal);font-weight:600;min-height:36px}
+.typesel select{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
+.typesel svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.ci{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center}
+.ci>span{font-size:15px;color:var(--muted)}
+details>summary{list-style:none;cursor:pointer}
+details>summary::-webkit-details-marker{display:none}
+details.more>summary{color:var(--signal);font-weight:600;min-height:40px;display:flex;align-items:center;gap:4px}
+.chev{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s;color:var(--muted);flex:none}
+details[open]>summary .chev{transform:rotate(180deg)}
+.plan{display:flex;flex-direction:column}
+.pl{border-top:1px solid var(--line)}
+.pl:first-child{border-top:0}
+.pl>summary,.pl-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;min-height:56px}
+.pl-th{display:flex;gap:4px}
+.pl-th .thumb{width:46px}
+.pl-tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pl-tx b{font-weight:650;line-height:1.25}
+.pl-tx span{font-size:14px;color:var(--muted)}
+.pl-body{display:flex;flex-direction:column;gap:14px;padding:2px 0 16px}
+.startbar{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px));z-index:4;padding:14px max(16px,env(safe-area-inset-left,0px)) 10px;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.startbar .btn{max-width:528px;margin:0 auto}
 .ex{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.ex .n{font-weight:600}
-.ex .t{font-family:var(--f-num);font-size:13px;color:var(--muted);white-space:nowrap}
+.ex .n{font-weight:650}
+.ex .t{font-size:14px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
-.tag{font-size:11px;font-weight:600;border-radius:5px;padding:2px 6px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
-.tag.kg{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.tag.up{background:var(--good-soft);color:var(--good);border-color:transparent}
-.mini{border:1px solid var(--line);background:var(--bg);border-radius:7px;width:30px;height:30px;padding:0;font-size:17px;font-weight:700;line-height:1;flex:none}
-.adj{display:inline-flex;align-items:center;gap:4px;flex-wrap:nowrap;white-space:nowrap}
-.note{border-left:3px solid var(--signal);background:var(--signal-soft);padding:10px 12px;border-radius:0 8px 8px 0;font-size:14px}
-.ai{border-left-color:var(--accent);background:var(--accent-soft)}
+.tag{font-size:12px;font-weight:600;border-radius:7px;padding:3px 8px;background:var(--bg);color:var(--muted)}
+.tag.kg{background:var(--accent-soft);color:var(--accent-text)}
+.tag.up{background:var(--good-soft);color:var(--good)}
+.mini{border:1px solid var(--line);background:var(--bg);border-radius:10px;width:36px;height:36px;padding:0;font-size:18px;font-weight:700;line-height:1;flex:none;color:var(--ink)}
+.adj{display:inline-flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap}
+.note{background:var(--signal-soft);padding:12px 14px;border-radius:14px;font-size:15px}
+.note.ai{background:var(--accent-soft)}
+.note.good{background:var(--good-soft)}
 
-/* tabs */
-.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:5;
-  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
-.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
-.tabs button{background:none;border:0;padding:12px 2px 10px;font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px}
-.tabs button[aria-current="true"]{color:var(--accent)}
-.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+/* onglets */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);box-shadow:0 -1px 0 var(--line);z-index:5;
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
+.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--tabh)}
+.tabs button{background:none;border:0;padding:6px 2px;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.tabs button[aria-current="true"]{color:var(--accent-text)}
+.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8}
 
-/* week grid */
-.grid{display:grid;grid-template-columns:52px repeat(7,1fr);gap:4px;font-size:11px}
+/* progrès */
+.grid{display:grid;grid-template-columns:44px repeat(7,1fr);gap:5px;font-size:12px}
 .grid .h{color:var(--muted);text-align:center;font-weight:600}
-.grid .wk{color:var(--muted);font-family:var(--f-num);font-size:10px;align-self:center}
-.cell{aspect-ratio:1;max-width:100%;border-radius:5px;background:var(--bg);border:1px solid var(--line)}
-.cell.plan{border-style:dashed;border-color:var(--muted)}
-.cell.done{background:var(--accent);border-color:var(--accent)}
+.grid .wk{color:var(--muted);font-size:11px;align-self:center;font-variant-numeric:tabular-nums}
+.cell{aspect-ratio:1;max-width:100%;border-radius:6px;background:var(--bg)}
+.cell.plan{box-shadow:inset 0 0 0 1.5px var(--muted)}
+.cell.done{background:var(--accent)}
 .cell.today{outline:2px solid var(--signal);outline-offset:1px}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
-.kpi b{display:block;font-family:var(--f-display);font-size:28px;line-height:1}
-.kpi span{font-size:12px;color:var(--muted)}
+.kpi{background:var(--surface);border-radius:14px;padding:12px}
+.kpi b{display:block;font-family:var(--f-display);font-stretch:70%;font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--muted)}
 .hist{display:flex;flex-direction:column}
-.hist .it{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.hist .it{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
 .hist .it:first-child{border-top:0}
 .empty{text-align:center;padding:26px 12px;color:var(--muted)}
-.trend{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.trend{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .trend:first-of-type{border-top:0}
-.trend .v{font-family:var(--f-num);font-size:13px;color:var(--muted);margin-top:2px}
+.trend .v{font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 .trend .v b{color:var(--ink)}
 .spark{width:96px;height:30px;display:block;overflow:visible}
-.spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.spark polyline{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
 .spark circle{fill:var(--accent)}
 .spark rect{fill:var(--accent)}
 .spark rect.cur{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
 .spark line{stroke:var(--line);stroke-width:1}
 .tform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* chat */
+/* coach */
 .msgs{display:flex;flex-direction:column;gap:10px}
-.msg{max-width:88%;padding:10px 12px;border-radius:12px;white-space:pre-wrap;min-width:0;overflow-wrap:anywhere}
-.msg.u{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
-.msg.a{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg{max-width:88%;padding:11px 14px;border-radius:16px;white-space:pre-wrap;min-width:0;overflow-wrap:anywhere}
+.msg.u{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:5px}
+.msg.a{align-self:flex-start;background:var(--surface);border-bottom-left-radius:5px}
 
-/* live */
+/* séance guidée : un seul geste par écran, gros chiffres lisibles posés au sol */
 .live{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .live .wrap{padding-block:12px 24px;min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px}
-.progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.progress{height:6px;background:var(--surface);border-radius:6px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--accent);transition:width .3s}
-.stage{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
-.stage .what{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1.02}
-.stage .big{font-family:var(--f-num);font-size:56px;line-height:1;text-align:center}
-.stepper{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center}
-.stepper button{height:56px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:26px;font-weight:600}
-.stepper .v{text-align:center;font-family:var(--f-num);font-size:40px}
-.stepper .u{display:block;font-family:var(--f-body);font-size:12px;color:var(--muted)}
-.next{font-size:14px;color:var(--muted)}
+.stage{background:var(--surface);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.stage.enter{animation:enter .22s ease-out}
+@keyframes enter{from{transform:translateX(14px)}to{transform:none}}
+.stage .what{font-family:var(--f-display);font-stretch:72%;font-size:38px;font-weight:800;line-height:1}
+.stage .timer{font-family:var(--f-display);font-stretch:62%;font-weight:800;font-size:96px;line-height:.9;text-align:center;font-variant-numeric:tabular-nums}
+.stepper{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:center}
+.stepper button{height:64px;border-radius:16px;border:0;background:var(--bg);font-size:28px;font-weight:700;color:var(--ink)}
+.stepper .v{text-align:center;font-family:var(--f-display);font-stretch:66%;font-weight:800;font-size:54px;line-height:1;font-variant-numeric:tabular-nums}
+.stepper .u{display:block;font-family:var(--f-body);font-stretch:100%;font-weight:500;font-size:13px;color:var(--muted);margin-top:4px}
+.next{font-size:15px;color:var(--muted)}
 .next b{color:var(--ink)}
 .rpe{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .anchor{display:inline-flex;align-items:center;gap:5px}
 .anchor svg{width:14px;height:14px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
 /* illustrations */
 .ill{width:100%;height:auto;display:block}
 .ill .fl{stroke:var(--line);stroke-width:1}
@@ -256,9 +282,9 @@ const ZONES = {epaule:"Épaule",coude:"Coude",poignet:"Poignet",dos:"Lombaires",
 // Chaque bloc = un duo enchaîné sans repos. Règle : au plus UN exercice haltères par duo,
 // donc on ne règle les haltères qu'entre deux blocs.
 const TPL = {
-  haut_a:{t:"Haut · Poussée",rounds:4,blocks:[[["dc","ta"],["dci","rd"],["dc","rowel"]],[["dm","tva"],["arnold","tva"],["dm","fp"]],[["ext","pdecl"],["el","dips"],["ext","fp"]]]},
+  haut_a:{t:"Haut du corps, poussée",rounds:4,blocks:[[["dc","ta"],["dci","rd"],["dc","rowel"]],[["dm","tva"],["arnold","tva"],["dm","fp"]],[["ext","pdecl"],["el","dips"],["ext","fp"]]]},
   dyn:{t:"Full body dynamique",rounds:4,fin:true,blocks:[[["thruster","rowel"],["cleanpress","sqrow"],["snatch","rowel"]],[["renegade","burpee"],["manmaker","bear"],["renegade","spider"]],[["swing","presseel"],["fenterot","presseel"],["swing","spider"]]]},
-  haut_b:{t:"Haut · Tirage",rounds:4,blocks:[[["row","pompes"],["row","pdecl"],["renegade","tva"]],[["pullover","fp"],["dci","rd"],["pullover","rowel"]],[["curl","tri"],["el","ce"],["curl","dips"]]]},
+  haut_b:{t:"Haut du corps, tirage",rounds:4,blocks:[[["row","pompes"],["row","pdecl"],["renegade","tva"]],[["pullover","fp"],["dci","rd"],["pullover","rowel"]],[["curl","tri"],["el","ce"],["curl","dips"]]]},
   mix:{t:"Haut + entretien bas",rounds:4,blocks:[[["gs","pal"],["bul","pal"],["stepup","pal"]],[["rdl","pompes"],["ht","pdecl"],["swing","pompes"]],[["dm","rd"],["arnold","fp"],["dci","ta"]]]},
   bas:{t:"Bas + gainage",rounds:4,blocks:[[["gs","pal"],["bul","pal"]],[["rdl","deadbug"],["ht","deadbug"]],[["fa","glat"],["stepup","planche"]]]},
   cardio:{t:"Tapis fractionné",rounds:3,run:true,blocks:[[["ht","planche"],["swing","bear"]]]},
@@ -525,7 +551,7 @@ function illus(id){
 }
 
 // ---------- State ----------
-const S = {lf:"all",lq:"",libOpen:new Set(),settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],mob:{},mods:(()=>{try{return JSON.parse(localStorage.getItem("creneau.mods"));}catch(e){return null;}})(),cz:["hanches","dos"],cd:10,cs:"dyn",tab:"seance",override:null,
+const S = {planOpen:new Set(),lf:"all",lq:"",libOpen:new Set(),settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],mob:{},mods:(()=>{try{return JSON.parse(localStorage.getItem("creneau.mods"));}catch(e){return null;}})(),cz:["hanches","dos"],cd:10,cs:"dyn",tab:"seance",override:null,
   ci:{sommeil:"bien",energie:2,temps:null,txt:""},adj:{intensite:0,zones:[],msg:""},
   aiBusy:false,live:null,chat:[],chatBusy:false,debrief:"",storage:"local",sample:null};
 
@@ -679,7 +705,7 @@ function routine(ids,target){
   return ids.map(id=>({id,sec:Math.max(15,Math.min(MOBEX[id].side?90:120,Math.round(MOBEX[id].sec*f/5)*5))}));
 }
 function wakeRoutine(d=new Date()){ const n=doy(d); return {kind:"wake",title:"Réveil",items:routine(WAKE.map((c,i)=>c[(n+i)%c.length]),600)}; }
-function soupleRoutine(d=new Date()){ const f=SOUPLE[doy(d)%SOUPLE.length]; return {kind:"souple",title:`Souplesse · ${f.t}`,focus:f.t,items:routine(f.ids,900)}; }
+function soupleRoutine(d=new Date()){ const f=SOUPLE[doy(d)%SOUPLE.length]; return {kind:"souple",title:`Souplesse, ${f.t.toLowerCase()}`,focus:f.t,items:routine(f.ids,900)}; }
 function pauseRoutine(id){ const r=PAUSES.find(x=>x.id===id); return {kind:"pause",title:r.t,items:routine(r.ids,180)}; }
 // sur mesure : zones choisies prises à tour de rôle, départ décalé selon le jour
 function customRoutine(){
@@ -691,7 +717,7 @@ function customRoutine(){
     const id=pools[i%pools.length][Math.floor(i/pools.length)]; if(!id||ids.includes(id)) continue;
     ids.push(id); tot+=MOBEX[id].sec*(MOBEX[id].side?2:1);
   }
-  return {kind:"custom",title:`Sur mesure · ${S.cd}′`,items:routine(ids,target)};
+  return {kind:"custom",title:`Sur mesure, ${S.cd} min`,items:routine(ids,target)};
 }
 function getRoutine(key){
   if(key==="wake") return wakeRoutine();
@@ -704,8 +730,8 @@ function getRoutine(key){
 function routineSteps(items,title){
   return items.flatMap(({id,sec})=>{ const m=MOBEX[id];
     if(!m.side) return [{kind:"timer",id,label:m.n,sec,txt:m.cue,title,say:m.n}];
-    return [{kind:"timer",id,label:`${m.n} · côté gauche`,sec,txt:m.cue,title,say:`${m.n}, côté gauche`},
-            {kind:"timer",id,label:`${m.n} · côté droit`,sec,txt:m.cue,title,say:"Changement de côté"}];
+    return [{kind:"timer",id,label:`${m.n}, côté gauche`,sec,txt:m.cue,title,say:`${m.n}, côté gauche`},
+            {kind:"timer",id,label:`${m.n}, côté droit`,sec,txt:m.cue,title,say:"Changement de côté"}];
   });
 }
 function wakeStreak(){
@@ -1057,7 +1083,7 @@ Réponds avec message (2 à 5 phrases, tutoiement, sans emoji ; si tu proposes d
     const r=await S.sample.plan(prompt), a=S.chat.at(-1);
     a.content=String(r?.message||"").slice(0,1500)||"…"; a.changes=checkChanges(r?.changes,p,q); a.skipped=a.changes.skipped;
   }catch(e){ S.chat.at(-1).content=e?.code==="rate_limited"?"Coach saturé, réessaie dans une minute."
-    :e?.code==="unauthorized"?"Code d'accès refusé par le relais : vérifie-le dans Semaine → Coach IA."
+    :e?.code==="unauthorized"?"Code d'accès refusé par le relais : vérifie-le dans les réglages."
     :e instanceof TypeError?"Relais injoignable (réseau ou adresse du proxy)."
     :`Pas de réponse du coach pour l'instant${e?.detail?` (${e.detail})`:""}.`; }
   S.chatBusy=false; render(); const m=$("#msgs"); m&&m.lastElementChild?.scrollIntoView({block:"end"});
@@ -1068,6 +1094,11 @@ const ICON={
   seance:'<svg viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg>',
   semaine:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   histo:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  progres:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  back:'<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
   biblio:'<svg viewBox="0 0 24 24"><path d="M5 4h4v16H5zM10 4h4v16h-4zM15.5 4.5l3.5-.9 3.2 15.4-3.5.9z"/></svg>',
   pause:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M5 9l7 2 7-2M12 11v4l-3 6M12 15l3 6"/></svg>',
   coach:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>',
@@ -1087,66 +1118,58 @@ function exLine(id,target,sug){
   return `<div class="exw"><div class="thumb">${illus(id)}</div><div class="stack" style="gap:4px"><div class="ex"><span class="n">${esc(e.n)}</span></div><span class="adj"><button class="mini" data-adj="t" data-ex="${id}" data-d="-1" aria-label="Moins de ${e.hold?"secondes":"répétitions"}">−</button><span class="t" style="min-width:64px;text-align:center">${t}</span><button class="mini" data-adj="t" data-ex="${id}" data-d="1" aria-label="Plus de ${e.hold?"secondes":"répétitions"}">+</button></span>${e.eq==="band"?bandAdj(id):""}${tags.length?`<div class="tags">${tags.join("")}</div>`:""}</div></div>`;
 }
 function planHTML(p){
-  let bi=0;
+  const mins=s=>Math.max(1,Math.round(s/60)), sum=a=>a.reduce((x,y)=>x+y.sec,0);
+  const row=(th,title,sub,right)=>`<div class="pl pl-row"><div class="pl-th">${th}</div><div class="pl-tx"><b>${esc(title)}</b>${sub?`<span>${sub}</span>`:""}</div><span class="muted num">${right}</span></div>`;
   return p.items.map(it=>{
-    if(it.kind==="run"){
-      const tot=Math.round(it.steps.reduce((a,x)=>a+x.sec,0)/60);
-      const sp=[...new Set(it.steps.map(s=>s.speed))].join(" / ");
-      return `<div class="block"><div class="bmark run">TAPIS<b>${tot}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span><span class="t">${sp} km/h</span></div>${it.extra?`<div class="muted" style="font-size:13px">${esc(it.extra)}</div>`:""}</div></div>`;
-    }
-    if(it.kind==="mob"){
-      const tot=Math.round(routineSec(it.moves)/60);
-      return `<div class="block"><div class="bmark run">MOB<b>${tot}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${it.moves.map(m=>esc(MOBEX[m.id].n)).join(" · ")}</div></div></div>`;
-    }
-    if(it.kind==="text") return `<div class="block"><div class="bmark run">FIN<b>${it.sec/60}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${esc(it.txt)}</div></div></div>`;
-    bi++; const note=it.sug.find(s=>s.note);
-    return `<div class="block"><div class="bmark">BLOC<b>${String.fromCharCode(64+bi)}</b></div><div class="pair">
-      <div class="row between"><span class="eyebrow">${it.rounds} tours${p.rest?` · repos ${p.rest} s`:" enchaînés, sans repos"}</span>${it.w?(()=>{const db=it.pair.find(id=>EX[id].eq==="db");return `<span class="adj"><button class="mini" data-adj="w" data-ex="${db}" data-d="-1" aria-label="Moins lourd">−</button><span class="tag kg num">${it.w} kg</span><button class="mini" data-adj="w" data-ex="${db}" data-d="1" aria-label="Plus lourd">+</button></span>`;})():`<span class="tag">pas d'haltères</span>`}</div>
-      ${it.pair.map((id,k)=>exLine(id,it.targets[k],it.sug[k])).join("")}
-      ${note?`<div class="muted" style="font-size:13px">${esc(note.note)}</div>`:""}
-    </div></div>`;
+    if(it.kind==="run") return row(`<div class="thumb">${illus("run")}</div>`,it.title,`${[...new Set(it.steps.map(s=>num(s.speed)))].join(" puis ")} km/h`,`${mins(sum(it.steps))} min`);
+    if(it.kind==="mob") return row(`<div class="thumb">${illus(it.moves[0].id)}</div>`,it.title,it.moves.map(m=>esc(MOBEX[m.id].n)).join(", "),`${mins(routineSec(it.moves))} min`);
+    if(it.kind==="text") return row("",it.title,esc(it.txt),`${mins(it.sec)} min`);
+    const g=`b-${it.bix}`, note=it.sug.find(s=>s.note), db=it.pair.find(id=>EX[id].eq==="db");
+    const meta=[`${it.rounds} tours`,it.w?`${num(it.w)} kg`:null,p.rest?`repos ${p.rest} s`:"sans repos"].filter(Boolean).join(", ");
+    return `<details class="pl" data-g="${g}" ${S.planOpen.has(g)?"open":""}><summary><div class="pl-th">${it.pair.map(id=>`<div class="thumb">${illus(id)}</div>`).join("")}</div>
+      <div class="pl-tx"><b>${it.pair.map(id=>esc(EX[id].n)).join(" + ")}</b><span class="num">${meta}</span></div>${ICON.chev}</summary>
+      <div class="pl-body">${db?`<div class="row between" style="flex-wrap:nowrap"><span class="muted small">Haltères, par main</span><span class="adj"><button class="mini" data-adj="w" data-ex="${db}" data-d="-1" aria-label="Moins lourd">−</button><span class="tag kg num" style="min-width:56px;text-align:center">${num(it.w)} kg</span><button class="mini" data-adj="w" data-ex="${db}" data-d="1" aria-label="Plus lourd">+</button></span></div>`:""}
+      ${it.pair.map((id,k)=>exLine(id,it.targets[k],it.sug[k])).join("")}${note?`<div class="muted small">${esc(note.note)}</div>`:""}</div></details>`;
   }).join("");
 }
 function chips(name,opts,val){
   return opts.map(([v,l])=>`<button class="chip" data-ci="${name}" data-v="${v}" aria-pressed="${String(v)===String(val)}">${l}</button>`).join("");
 }
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 function viewSeance(){
   const p=buildPlan(); const now=new Date(); const tpl=TPL[p.type];
   const doneToday=S.sessions.some(s=>dayKey(new Date(s.date))===dayKey(now));
   const typeOpts=Object.keys(TPL).map(k=>`<option value="${k}" ${k===p.type?"selected":""}>${TPL[k].t}</option>`).join("");
-  const tv=S.ci.temps??defBudget(tpl);
+  const tv=S.ci.temps??defBudget(tpl), nb=p.items.filter(i=>i.kind==="pair").length;
   const offerExpress=p.type!=="express" && (S.ci.energie===1 || (S.ci.temps!=null&&S.ci.temps<=15));
   const dl={fatigue:"Tes 3 dernières séances étaient très dures (RPE 9 ou plus) : séance allégée pour récupérer.",cycle:"Semaine allégée : après 4 semaines d'entraînement, on lève le pied pour mieux progresser ensuite."}[p.deload];
+  const note=(cls,txt,btn="")=>`<div class="note ${cls}${btn?" stack":""}"${btn?' style="gap:10px"':""}><span>${txt}</span>${btn}</div>`;
+  const t=S.tests.at(-1), age=t?Math.floor((Date.now()-new Date(t.date))/864e5):null;
   return `<div class="stack">
-    <div class="header"><div><div class="eyebrow">${now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>${esc(p.title)}</h1></div><span class="slot">${p.type==="full60"?"samedi · 1 h":"5:50 → 6:25"}</span></div>
-    ${S.bootNote?`<div class="note" style="border-left-color:var(--good);background:var(--good-soft)">${esc(S.bootNote)}</div>`:""}
-    ${doneToday?`<div class="note" style="border-left-color:var(--good);background:var(--good-soft)">Séance du jour enregistrée. Tu peux en refaire une ou passer à demain.</div>`:""}
-    <div class="card stack">
-      <div class="row between"><h3>Check-in</h3><select id="type" aria-label="Type de séance" style="width:auto">${typeOpts}</select></div>
-      <div class="field"><span>Sommeil</span><div class="row">${chips("sommeil",[["bien","Bien"],["moyen","Moyen"],["mal","Mal"]],S.ci.sommeil)}</div></div>
-      <div class="field"><span>Énergie</span><div class="row">${chips("energie",[[1,"Basse"],[2,"Normale"],[3,"Haute"]],S.ci.energie)}</div></div>
-      <div class="field"><span>Temps dispo : <b id="tval" class="num" style="color:var(--ink)">${tv} min</b></span>
+    <div class="header"><div style="min-width:0"><div class="eyebrow">${cap(now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}))}</div><h1>${esc(p.title)}</h1><div class="sub num">${p.min} minutes${nb?`, ${nb} bloc${nb>1?"s":""}`:""}</div></div><button class="icon-btn" data-tab="reglages" aria-label="Réglages">${ICON.gear}</button></div>
+    <label class="typesel">Changer de séance ${ICON.chev}<select id="type" aria-label="Type de séance">${typeOpts}</select></label>
+    ${S.bootNote?note("good",esc(S.bootNote)):""}
+    ${doneToday?note("good","Séance du jour enregistrée. Tu peux en refaire une ou passer à demain."):""}
+    ${p.mods?note("ai","Séance modifiée par le coach.",`<button class="btn" id="undomods">Annuler les changements</button>`):""}
+    ${!plannedDay(now)&&!doneToday&&!S.mob[dayKey(now)]?.wake?note("good","Pas de séance prévue aujourd'hui. 10 minutes de mobilité au réveil gardent le rythme.",`<button class="btn" data-routine="wake">Lancer le réveil</button>`):""}
+    ${offerExpress?note("","Peu d'énergie ou peu de temps ? 12 minutes valent mieux que rien, et la séance compte dans ta semaine.",`<button class="btn" id="express">Passer en séance express</button>`):""}
+    ${dl?note("",dl):""}
+    ${S.adj.msg?note("ai",esc(S.adj.msg)):""}
+    <div class="card stack" style="gap:12px">
+      <div class="ci"><span>Sommeil</span><div class="seg">${chips("sommeil",[["bien","Bien"],["moyen","Moyen"],["mal","Mal"]],S.ci.sommeil)}</div></div>
+      <div class="ci"><span>Énergie</span><div class="seg">${chips("energie",[[1,"Basse"],[2,"Normale"],[3,"Haute"]],S.ci.energie)}</div></div>
+      <div><div class="row between"><span class="muted">Temps disponible</span><b id="tval" class="num">${tv} min</b></div>
         <input type="range" id="temps" min="0" max="120" step="5" value="${tv}" aria-label="Temps disponible en minutes">
-        <div class="row between muted num" style="font-size:11px"><span>0</span><span>30</span><span>60</span><span>90</span><span>120</span></div>
-        ${tv<10?`<span class="muted" style="font-size:12px;font-weight:400">Moins de 10 minutes : la séance est réduite au minimum possible.</span>`:""}</div>
-      <label class="field"><span>Douleur, gêne ou contrainte</span><textarea id="citxt" placeholder="ex. épaule droite raide, genou ok">${esc(S.ci.txt)}</textarea></label>
-      ${S.sample?`<button class="btn" id="aiadj" ${S.aiBusy?"disabled":""}>${S.aiBusy?"Le coach ajuste…":"Adapter avec le coach IA"}</button>`:""}
+        ${tv<10?`<div class="muted small">Moins de 10 minutes : la séance est réduite au minimum possible.</div>`:""}</div>
+      <details class="more" ${S.ci.txt?"open":""}><summary>Une gêne ou une douleur ? ${ICON.chev}</summary>
+        <div class="stack" style="gap:10px;padding-top:6px">${S.sample?`<textarea id="citxt" placeholder="Par exemple : épaule droite raide">${esc(S.ci.txt)}</textarea>
+          <button class="btn" id="aiadj" ${S.aiBusy?"disabled":""}>${S.aiBusy?"Le coach adapte ta séance…":"Adapter la séance avec le coach"}</button>`
+          :`<span class="muted small">Le coach peut adapter ta séance à une gêne. Il se configure dans les réglages.</span><button class="btn" data-tab="reglages">Configurer le coach</button>`}</div></details>
     </div>
-    ${offerExpress?`<div class="note stack" style="gap:10px"><span>Peu d'énergie ou peu de temps ? 12 minutes valent mieux que rien, et la séance compte dans ta semaine.</span><button class="btn" id="express">Passer en séance express</button></div>`:""}
-    ${dl?`<div class="note">${dl}</div>`:""}
-    ${(()=>{const t=S.tests.at(-1), age=t?Math.floor((Date.now()-new Date(t.date))/864e5):null;
-      if(t&&age<TEST_EVERY_DAYS) return "";
-      return `<div class="note stack" style="gap:10px;border-left-color:var(--accent);background:var(--accent-soft)"><span>${t?`Ton dernier bilan de forme date de ${Math.floor(age/7)} semaines : refais-le cette semaine pour mesurer tes progrès.`:"Fais un premier bilan de forme (10 minutes) pour pouvoir mesurer tes progrès."}</span><button class="btn" data-bilan="1">Faire le bilan</button></div>`;})()}
-    ${p.mods?`<div class="note ai row between" style="flex-wrap:nowrap;gap:10px"><span>Séance modifiée par le coach.</span><button class="btn" id="undomods" style="flex:none">Annuler</button></div>`:""}
-    ${!plannedDay(now)&&!doneToday&&!S.mob[dayKey(now)]?.wake?`<div class="note stack" style="gap:10px;border-left-color:var(--good);background:var(--good-soft)"><span>Pas de séance prévue aujourd'hui. 10 minutes de mobilité au réveil gardent le rythme.</span><button class="btn" data-routine="wake">Lancer le réveil 10′</button></div>`:""}
-    ${S.adj.msg?`<div class="note ai">${esc(S.adj.msg)}</div>`:""}
-    ${(p.zones.length||p.inten)?`<div class="tags">${p.deload?'<span class="tag">semaine allégée</span>':""}${p.inten<0&&!p.deload?'<span class="tag">intensité −1</span>':""}${p.inten>0?'<span class="tag up">bonne forme</span>':""}${p.zones.map(z=>`<span class="tag">évite : ${ZONES[z]}</span>`).join("")}</div>`:""}
-    <div class="card">
-      <div class="row between" style="margin-bottom:6px"><h3>Plan</h3><span class="num muted">≈ ${p.min} min</span></div>
-      ${planHTML(p)}
-    </div>
-    <button class="btn primary big" id="start">Démarrer</button>
-    <p class="muted" style="font-size:12px;margin:0">Règle les kg et les répétitions avec − / + : ton choix est gardé pour la prochaine séance, puis la progression automatique repart de ce que tu as réellement fait. Repos et annonces vocales : onglet Semaine.</p>
+    ${(p.zones.length||p.inten)?`<div class="tags">${p.deload?'<span class="tag">semaine allégée</span>':""}${p.inten<0&&!p.deload?'<span class="tag">intensité réduite</span>':""}${p.inten>0?'<span class="tag up">bonne forme</span>':""}${p.zones.map(z=>`<span class="tag">évite : ${ZONES[z].toLowerCase()}</span>`).join("")}</div>`:""}
+    ${!t||age>=TEST_EVERY_DAYS?note("",t?`Ton dernier bilan de forme date de ${Math.floor(age/7)} semaines : refais-le cette semaine pour mesurer tes progrès.`:"Fais un premier bilan de forme (10 minutes) pour mesurer tes progrès.",`<button class="btn" data-bilan="1">Faire le bilan</button>`):""}
+    <div class="card" style="padding-block:4px"><div class="plan">${planHTML(p)}</div></div>
+    <p class="muted small" style="margin:0">Touche un bloc pour régler les kg et les répétitions : ton choix est repris à la séance suivante.</p>
   </div>`;
 }
 function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
@@ -1166,58 +1189,74 @@ function weekly(){
   if(weeks.at(-1).n>=need) streak++;
   return {weeks,target,need,streak};
 }
-function viewSemaine(){
+function viewProgres(){
   const {weeks,target,need,streak}=weekly(); const today=dayKey(new Date()); const cur=weeks.at(-1);
   const st=S.settings;
   // aperçu de la rotation sur les 7 prochains jours
   let n=S.sessions.filter(s=>SEQ.includes(s.type)).length; const doneToday=S.sessions.some(s=>dayKey(new Date(s.date))===today);
   const next=[]; for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()+i); if(i===0&&doneToday) continue; if(!plannedDay(d)) continue;
     next.push({d,t:st.weekend&&d.getDay()===6?"full60":SEQ[n++%SEQ.length]});}
+  let pn=0,pw=0,pm=0; for(let j=0;j<7;j++){const d=new Date(weekStart(new Date()));d.setDate(d.getDate()+j);const k=dayKey(d),q=S.pauses[k];if(q){pn+=q.n;pw+=q.walk;}pm+=S.mob[k]?.min||0;}
   return `<div class="stack">
-    <div class="header"><div><div class="eyebrow">Régularité</div><h1>Ma semaine</h1></div></div>
+    <div class="header"><div><h1>Progrès</h1><div class="sub num">${cur.n} séance${cur.n>1?"s":""} sur ${target} cette semaine</div></div><button class="icon-btn" data-tab="reglages" aria-label="Réglages">${ICON.gear}</button></div>
     <div class="kpis">
-      <div class="kpi"><b class="num">${cur.n}/${target}</b><span>cette semaine</span></div>
-      <div class="kpi"><b class="num">${streak}</b><span>semaine${streak>1?"s":""} validée${streak>1?"s":""} d'affilée</span></div>
-      <div class="kpi"><b class="num">${S.sessions.length}</b><span>séances au total</span></div>
+      <div class="kpi"><b>${cur.n}/${target}</b><span>cette semaine</span></div>
+      <div class="kpi"><b>${streak}</b><span>semaine${streak>1?"s":""} validée${streak>1?"s":""} d'affilée</span></div>
+      <div class="kpi"><b>${S.sessions.length}</b><span>séances au total</span></div>
     </div>
     <div class="card">
       <div class="grid"><span></span>${["L","M","M","J","V","S","D"].map(x=>`<span class="h">${x}</span>`).join("")}
       ${weeks.map(w=>`<span class="wk">${w.ws.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}</span>${w.cells.map(c=>`<span class="cell ${c.dn?"done":c.plan&&c.k>=today?"plan":""} ${c.k===today?"today":""}" title="${c.k}"></span>`).join("")}`).join("")}
       </div>
-      <div class="row muted" style="font-size:12px;margin-top:10px;gap:14px"><span class="row" style="gap:5px"><span class="cell done" style="width:12px"></span>faite</span><span class="row" style="gap:5px"><span class="cell plan" style="width:12px"></span>prévue</span><span>semaine validée dès ${need} séance${need>1?"s":""}</span></div>
+      <div class="row muted small" style="margin-top:12px;gap:14px"><span class="row" style="gap:6px"><span class="cell done" style="width:12px"></span>faite</span><span class="row" style="gap:6px"><span class="cell plan" style="width:12px"></span>prévue</span><span>Une semaine est validée dès ${need} séance${need>1?"s":""}.</span></div>
     </div>
-    ${(()=>{let n=0,w=0,m=0;for(let j=0;j<7;j++){const d=new Date(weekStart(new Date()));d.setDate(d.getDate()+j);const k=dayKey(d),p=S.pauses[k];if(p){n+=p.n;w+=p.walk;}m+=S.mob[k]?.min||0;}
-      return `<div class="card stack" style="gap:4px"><div class="row between"><span>Mobilité cette semaine</span><span class="num"><b>${m}′</b></span></div><span class="muted num" style="font-size:13px">${n} pause${n>1?"s":""} bureau · ${w}′ de marche</span></div>`;})()}
+    <div class="card stack" style="gap:4px"><div class="row between"><h3>Mobilité cette semaine</h3><b class="num">${pm} min</b></div><span class="muted small num">${pn} pause${pn>1?"s":""} au bureau et ${pw} min de marche</span></div>
     <div class="card"><h3 style="margin-bottom:6px">À venir</h3>
-      <div class="hist">${next.map(x=>`<div class="it"><span>${x.d.toLocaleDateString("fr-FR",{weekday:"long"})}</span><span class="muted">${TPL[x.t].t}</span></div>`).join("")||'<div class="empty">Aucun jour prévu.</div>'}</div>
-      <p class="muted" style="font-size:12px;margin:8px 0 0">La rotation avance à chaque séance faite : un jour manqué décale le programme au lieu de le casser.</p>
+      <div class="hist">${next.map(x=>`<div class="it"><span>${cap(x.d.toLocaleDateString("fr-FR",{weekday:"long"}))}</span><span class="muted">${TPL[x.t].t}</span></div>`).join("")||'<div class="empty">Aucun jour prévu. Choisis tes jours dans les réglages.</div>'}</div>
+      <p class="muted small" style="margin:8px 0 0">La rotation avance à chaque séance faite : un jour manqué décale le programme au lieu de le casser.</p>
     </div>
-    <div class="card stack"><h3>Réglages</h3>
-      <div class="field"><span>Jours de séance en semaine</span><div class="row">${[1,2,3,4,5].map(d=>`<button class="chip" data-day="${d}" aria-pressed="${st.days.includes(d)}">${DAYS[d]}</button>`).join("")}<button class="chip" data-we="1" aria-pressed="${st.weekend}">Samedi 1 h</button></div></div>
+    ${viewHisto()}
+  </div>`;
+}
+function viewReglages(){
+  const st=S.settings, th=st.theme||"auto";
+  return `<div class="stack">
+    <div class="header"><div><h1>Réglages</h1></div><button class="icon-btn" data-tab="${S.prevTab||"seance"}" aria-label="Retour">${ICON.close}</button></div>
+    <div class="card stack"><h3>Programme</h3>
+      <div class="field"><span>Jours de séance</span><div class="row">${[1,2,3,4,5].map(d=>`<button class="chip" data-day="${d}" aria-pressed="${st.days.includes(d)}">${DAYS[d]}</button>`).join("")}<button class="chip" data-we="1" aria-pressed="${st.weekend}">Samedi 1 h</button></div></div>
+      <div class="field"><span>Repos entre les tours d'un bloc</span><div class="seg">${[[0,"Aucun"],[30,"30 s"],[60,"60 s"],[90,"90 s"]].map(([v,l])=>`<button class="chip" data-rest="${v}" aria-pressed="${(st.rest||0)===v}">${l}</button>`).join("")}</div></div>
+      <div class="field"><span>Pendant la séance</span><div class="row"><button class="chip" data-voice="1" aria-pressed="${!!st.voice}">Annonces vocales</button></div></div>
+    </div>
+    <div class="card stack"><h3>Tapis</h3>
       <div class="row" style="flex-wrap:nowrap">
-        <label class="field" style="flex:1"><span>Cran haltères (kg)</span><input type="number" id="s_step" min="0.5" step="0.5" value="${st.step}"></label>
-        <label class="field" style="flex:1"><span>Vitesse rapide</span><input type="number" id="s_fast" min="6" max="16" step="0.5" value="${st.fast}"></label>
         <label class="field" style="flex:1"><span>Footing</span><input type="number" id="s_easy" min="5" max="14" step="0.5" value="${st.easy}"></label>
         <label class="field" style="flex:1"><span>Modéré</span><input type="number" id="s_z2" min="4" max="12" step="0.5" value="${st.z2}"></label>
+        <label class="field" style="flex:1"><span>Rapide</span><input type="number" id="s_fast" min="6" max="16" step="0.5" value="${st.fast}"></label>
       </div>
-      <label class="field"><span>Mes élastiques (résistance en kg, ex. 5, 7,5, 10, 15)</span><input type="text" id="s_bands" inputmode="decimal" value="${esc(bandList().map(num).join(", "))}"></label>
-      <div class="field"><span>Repos entre les tours d'un bloc</span><div class="row">${[[0,"Aucun"],[30,"30 s"],[60,"60 s"],[90,"90 s"]].map(([v,l])=>`<button class="chip" data-rest="${v}" aria-pressed="${(st.rest||0)===v}">${l}</button>`).join("")}</div></div>
-      <div class="field"><span>Pendant la séance</span><div class="row"><button class="chip" data-voice="1" aria-pressed="${!!st.voice}">Annonces vocales</button></div></div>
-      <div class="field"><span>Charges de départ (kg par haltère) : lourd / moyen / léger</span><div class="row" style="flex-wrap:nowrap">
-        ${["H","M","L"].map(t=>`<input type="number" data-sw="${t}" min="2" max="24" step="${st.step}" value="${st.startW[t]}" aria-label="Charge ${t}">`).join("")}</div></div>
+      <span class="muted small">En km/h. Elles changent aussi quand tu ajustes la vitesse pendant une séance.</span>
     </div>
-    <div class="card row between" style="flex-wrap:nowrap;gap:10px"><span>Charges, élastiques et répétitions de chaque exercice</span><button class="btn" data-tab="biblio" style="flex:none">Régler</button></div>
-    <div class="card stack"><h3>Données</h3>
-      <p class="muted" style="font-size:13px;margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais Cloudflare.</p>
-      <p class="muted" id="bk_state" style="font-size:12px;margin:0">${esc(backupText())}</p>
-      ${BOOTS?`<p class="muted" style="font-size:12px;margin:0">Mémoire de l'app : ${BOOTS.n} ouverture${BOOTS.n>1?"s":""} depuis le ${new Date(BOOTS.since).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}${BOOTS.n===1?" (si ce chiffre reste à 1 à chaque ouverture, le téléphone efface la mémoire de l'app)":""}.</p>`:""}
-      <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label>${backup.conf()?`<button class="btn" id="rst" style="flex:1">Restaurer</button>`:""}</div>
-      ${S.impMsg?`<div class="muted" style="font-size:13px">${esc(S.impMsg)}</div>`:""}
+    <div class="card stack"><h3>Haltères et élastiques</h3>
+      <label class="field"><span>Mes élastiques, en kg (par exemple 5, 7,5, 10, 15)</span><input type="text" id="s_bands" inputmode="decimal" value="${esc(bandList().map(num).join(", "))}"></label>
+      <label class="field"><span>Écart entre deux charges d'haltère (kg)</span><input type="number" id="s_step" min="0.5" step="0.5" value="${st.step}"></label>
+      <div class="field"><span>Charges de départ par haltère : lourd, moyen, léger</span><div class="row" style="flex-wrap:nowrap">
+        ${["H","M","L"].map(t=>`<input type="number" data-sw="${t}" min="2" max="24" step="${st.step}" value="${st.startW[t]}" aria-label="Charge ${t}">`).join("")}</div></div>
+      <button class="btn" data-tab="biblio">Régler chaque exercice</button>
+    </div>
+    <div class="card stack"><h3>Affichage</h3>
+      <div class="seg">${[["auto","Automatique"],["dark","Sombre"],["light","Clair"]].map(([v,l])=>`<button class="chip" data-th="${v}" aria-pressed="${th===v}">${l}</button>`).join("")}</div>
+      <span class="muted small">Automatique : sombre de 20 h à 8 h, sinon comme ton téléphone.</span>
     </div>
     <div class="card stack"><h3>Coach IA</h3>
-      <label class="field"><span>Adresse du proxy</span><input type="text" id="c_url" inputmode="url" autocomplete="off" placeholder="${DEFAULT_COACH_URL}" value="${esc(coachConf().url)}"></label>
+      <label class="field"><span>Adresse du relais</span><input type="text" id="c_url" inputmode="url" autocomplete="off" placeholder="${DEFAULT_COACH_URL}" value="${esc(coachConf().url)}"></label>
       <label class="field"><span>Code d'accès</span><input type="text" id="c_code" autocomplete="off" value="${esc(coachConf().code||"")}"></label>
-      <p class="muted" id="c_state" style="font-size:12px;margin:0">${S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer."}</p>
+      <p class="muted small" id="c_state" style="margin:0">${S.sample?"Coach activé.":"Coach désactivé : saisis ton code d'accès pour l'activer."}</p>
+    </div>
+    <div class="card stack"><h3>Données</h3>
+      <p class="muted small" style="margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais.</p>
+      <p class="muted small" id="bk_state" style="margin:0">${esc(backupText())}</p>
+      ${BOOTS?`<p class="muted small" style="margin:0">Mémoire de l'app : ${BOOTS.n} ouverture${BOOTS.n>1?"s":""} depuis le ${new Date(BOOTS.since).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}${BOOTS.n===1?" (si ce chiffre reste à 1 à chaque ouverture, le téléphone efface la mémoire de l'app)":""}.</p>`:""}
+      <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label>${backup.conf()?`<button class="btn" id="rst" style="flex:1">Restaurer</button>`:""}</div>
+      ${S.impMsg?`<div class="muted small">${esc(S.impMsg)}</div>`:""}
     </div>
   </div>`;
 }
@@ -1252,7 +1291,7 @@ function viewBilan(){
     return trendRow(m.n,spark(vals),have.length>1?`${fmtMetric(m,f)} → <b>${fmtMetric(m,l)}</b>`:`<b>${fmtMetric(m,l)}</b>`,tag);
   }).join("");
   const last=new Date(T.at(-1).date);
-  return `<div class="card" id="bilan"><div class="row between" style="margin-bottom:4px"><h3>Bilan de forme</h3><span class="muted" style="font-size:12px">${T.length} bilan${T.length>1?"s":""} · dernier le ${last.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span></div>
+  return `<div class="card" id="bilan"><div class="row between" style="margin-bottom:4px"><h3>Bilan de forme</h3><span class="muted" style="font-size:12px">${T.length} bilan${T.length>1?"s":""}, dernier le ${last.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span></div>
     ${rows}<button class="btn" data-bilan="1" style="width:100%;margin-top:10px">Nouveau bilan</button></div>`;
 }
 function viewTrends(){
@@ -1284,7 +1323,7 @@ function viewHisto(){
     ${lifts.length?`<div class="card"><h3 style="margin-bottom:6px">Charges (kg / haltère)</h3><div class="hist">${lifts.map(l=>{
       const f=l.pts[0].w,la=l.pts.at(-1).w; return `<div class="it"><span>${esc(EX[l.id].n)}</span><span class="num">${f} → <b>${la}</b>${la>f?` <span class="tag up">+${la-f}</span>`:""}</span></div>`;}).join("")}</div></div>`:""}
     <div class="card"><h3 style="margin-bottom:6px">Séances</h3>
-      ${ss.length?`<div class="hist">${ss.map(s=>`<div class="it"><div style="min-width:0"><div style="font-weight:600">${esc(TPL[s.type]?.t||s.type)}</div><div class="muted" style="font-size:13px">${new Date(s.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}${s.note?` · ${esc(s.note)}`:""}</div></div><div class="num muted" style="text-align:right;white-space:nowrap">${Math.round(s.dur/60)}′<br>RPE ${s.rpe||"–"}</div></div>`).join("")}</div>`
+      ${ss.length?`<div class="hist">${ss.map(s=>`<div class="it"><div style="min-width:0"><div style="font-weight:600">${esc(TPL[s.type]?.t||s.type)}</div><div class="muted" style="font-size:13px">${new Date(s.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</div>${s.note?`<div class="muted small">${esc(s.note)}</div>`:""}</div><div class="num muted" style="text-align:right;white-space:nowrap">${Math.round(s.dur/60)}′<br>RPE ${s.rpe||"–"}</div></div>`).join("")}</div>`
       :`<div class="empty">Ta première séance apparaîtra ici, avec les charges et les reps de chaque bloc. Lance celle du jour depuis l'onglet Séance.</div>`}
     </div>
   </div>`;
@@ -1299,11 +1338,11 @@ function mobRow(id){
 function viewPause(){
   const k=dayKey(new Date()), t=S.pauses[k]||{n:0,walk:0}, mt=S.mob[k]||{min:0,wake:false}, streak=wakeStreak();
   const wk=wakeRoutine(), so=soupleRoutine(), cu=customRoutine();
-  const names=r=>r.items.map(i=>esc(MOBEX[i.id].n)).join(" · ");
+  const names=r=>r.items.map(i=>esc(MOBEX[i.id].n)).join(", ");
   const chip=(attr,v,l,on)=>`<button class="chip" data-${attr}="${v}" aria-pressed="${on}">${l}</button>`;
   const byZone=Object.keys(ZLAB).map(z=>[z,Object.keys(MOBEX).filter(id=>MOBEX[id].z===z)]);
   return `<div class="stack">
-    <div class="header"><div><div class="eyebrow">Souplesse et posture</div><h1>Mobilité</h1></div></div>
+    <div class="header"><div><h1>Mobilité</h1><div class="sub">Réveil, souplesse et pauses au bureau</div></div></div>
     <div class="kpis">
       <div class="kpi"><b class="num">${mt.min}′</b><span>de mobilité aujourd'hui</span></div>
       <div class="kpi"><b class="num">${streak}</b><span>jour${streak>1?"s":""} de réveil d'affilée</span></div>
@@ -1317,15 +1356,15 @@ function viewPause(){
     </div>
     <div class="card stack" style="gap:8px">
       <div class="row between"><h3>Souplesse</h3><span class="num muted">${Math.round(routineSec(so.items)/60)}′</span></div>
-      <span class="eyebrow">Aujourd'hui : ${esc(so.focus)}</span>
+      <span class="muted">Aujourd'hui : ${esc(so.focus.toLowerCase())}</span>
       <div class="muted" style="font-size:13px">${names(so)}</div>
       <p class="muted" style="font-size:12px;margin:0">Étirements tenus, à faire le soir ou après une séance, muscles chauds. Respire, ne force jamais jusqu'à la douleur.</p>
       <button class="btn" data-routine="souple">Lancer la souplesse</button>
     </div>
     <div class="card stack" style="gap:8px">
       <h3>Pauses bureau</h3>
-      ${PAUSES.map(p=>`<div class="row between" style="flex-wrap:nowrap"><span>${esc(p.t)} <span class="muted num">· 3′</span></span><button class="btn" data-routine="pause:${p.id}" style="padding:6px 12px">Lancer</button></div>`).join("")}
-      <span class="eyebrow" style="margin-top:4px">Marche du jour : ${t.walk}′</span>
+      ${PAUSES.map(p=>`<div class="row between" style="flex-wrap:nowrap"><span>${esc(p.t)} <span class="muted num">3 min</span></span><button class="btn" data-routine="pause:${p.id}" style="padding:6px 12px">Lancer</button></div>`).join("")}
+      <span class="muted" style="margin-top:4px">Marche du jour : ${t.walk} min</span>
       <div class="row" style="flex-wrap:nowrap"><button class="btn" data-walk="-5" style="flex:1">−5′</button><button class="btn" data-walk="5" style="flex:1">+5′</button><button class="btn" data-walk="10" style="flex:1">+10′</button><button class="btn" data-walk="20" style="flex:1">+20′</button></div>
       <p class="muted" style="font-size:12px;margin:0">Une pause toutes les 1 à 2 heures assis : le matin, après le déjeuner, en fin d'après-midi.</p>
     </div>
@@ -1334,16 +1373,16 @@ function viewPause(){
       <div class="field"><span>Zones</span><div class="row">${Object.entries(ZLAB).map(([z,l])=>chip("cz",z,l,S.cz.includes(z))).join("")}</div></div>
       <div class="field"><span>Durée</span><div class="row">${[5,10,15,20].map(d=>chip("cd",d,`${d}′`,S.cd===d)).join("")}</div></div>
       <div class="field"><span>Style</span><div class="row">${chip("cs","dyn","Mobilité",S.cs==="dyn")}${chip("cs","stretch","Étirements",S.cs==="stretch")}</div></div>
-      ${cu?`<div class="muted" style="font-size:13px">${names(cu)}</div><button class="btn primary" data-routine="custom">Lancer · ${Math.round(routineSec(cu.items)/60)}′</button>`:`<div class="muted" style="font-size:13px">Choisis au moins une zone qui a des exercices dans ce style.</div>`}
+      ${cu?`<div class="muted" style="font-size:13px">${names(cu)}</div><button class="btn primary" data-routine="custom">Lancer (${Math.round(routineSec(cu.items)/60)} min)</button>`:`<div class="muted" style="font-size:13px">Choisis au moins une zone qui a des exercices dans ce style.</div>`}
     </div>
-    <div class="card row between" style="flex-wrap:nowrap;gap:10px"><span>Les ${Object.keys(MOBEX).length} exercices de mobilité, illustrés, sont dans la Bibliothèque.</span><button class="btn" data-tab="biblio" data-lf="mob" style="flex:none">Voir</button></div>
+    <div class="card row between" style="flex-wrap:nowrap;gap:10px"><span>Les ${Object.keys(MOBEX).length} exercices de mobilité, illustrés, sont dans l'onglet Exercices.</span><button class="btn" data-tab="biblio" data-lf="mob" style="flex:none">Voir</button></div>
   </div>`;
 }
 const PLAB={legs:"Jambes",hinge:"Fessiers et chaîne arrière",push:"Poussée : pecs, épaules, triceps",pull:"Tirage : dos",shoulder:"Épaules",arms:"Bras",core:"Gainage",dyn:"Dynamique, tout le corps"};
 const norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 function musRow(id){
   const e=EX[id], s=suggest(id), mini=(attr,d,lab)=>`<button class="mini" ${attr} data-d="${d}" aria-label="${lab}">${d<0?"−":"+"}</button>`;
-  const eqTag=e.eq==="db"?"haltères":e.eq==="band"?`élastique · ${anchorIcon(e.a)}`:"poids du corps";
+  const eqTag=e.eq==="db"?"haltères":e.eq==="band"?`élastique ${anchorIcon(e.a)}`:"poids du corps";
   const ctrl=(e.eq==="db"?`<span class="adj">${mini(`data-adj="w" data-ex="${id}"`,-1,"Moins lourd")}<span class="tag kg num" style="min-width:52px;text-align:center">${num(s.w)} kg</span>${mini(`data-adj="w" data-ex="${id}"`,1,"Plus lourd")}</span>`:"")
     +(e.eq==="band"?bandAdj(id):"")
     +`<span class="adj">${mini(`data-adj="t" data-ex="${id}"`,-1,"Moins")}<span class="num" style="min-width:58px;text-align:center">${s.target}${e.hold?" s":" reps"}</span>${mini(`data-adj="t" data-ex="${id}"`,1,"Plus")}</span>`;
@@ -1356,14 +1395,14 @@ function musRow(id){
 function viewBiblio(){
   const f=S.lf, byName=(a,b)=>EX[a].n.localeCompare(EX[b].n,"fr");
   const groups=f==="mob"?[]:Object.keys(PLAB).map(p=>[`m-${p}`,PLAB[p],Object.keys(EX).filter(id=>EX[id].p===p&&(f==="all"||EX[id].eq===f)).sort(byName)]).filter(g=>g[2].length);
-  const mobG=f==="all"||f==="mob"?Object.keys(ZLAB).map(z=>[`z-${z}`,`Mobilité · ${ZLAB[z]}`,Object.keys(MOBEX).filter(id=>MOBEX[id].z===z)]):[];
+  const mobG=f==="all"||f==="mob"?Object.keys(ZLAB).map(z=>[`z-${z}`,`Mobilité, ${ZLAB[z].toLowerCase()}`,Object.keys(MOBEX).filter(id=>MOBEX[id].z===z)]):[];
   const chip=(v,l)=>`<button class="chip" data-lf="${v}" aria-pressed="${f===v}">${l}</button>`;
   const det=([g,l,ids],row)=>`<details data-g="${g}" ${S.libOpen.has(g)?"open":""}><summary style="padding:10px 0;font-weight:600;cursor:pointer">${esc(l)} <span class="muted num">(${ids.length})</span></summary>${ids.map(row).join("")}</details>`;
   return `<div class="stack">
-    <div class="header"><div><div class="eyebrow">${Object.keys(EX).length} musculation · ${Object.keys(MOBEX).length} mobilité</div><h1>Bibliothèque</h1></div></div>
+    <div class="header"><div><h1>Exercices</h1><div class="sub">${Object.keys(EX).length} de musculation et ${Object.keys(MOBEX).length} de mobilité, tous illustrés</div></div></div>
     <input type="search" id="libq" placeholder="Chercher un exercice" value="${esc(S.lq)}" autocomplete="off" aria-label="Chercher un exercice">
     <div class="row">${chip("all","Tous")}${chip("db","Haltères")}${chip("band","Élastique")}${chip("bw","Poids du corps")}${chip("mob","Mobilité")}</div>
-    ${f!=="mob"?`<p class="muted" style="font-size:12px;margin:0">Les kg, l'élastique et les répétitions réglés ici seront proposés à ta prochaine séance. Tes élastiques : ${bandList().map(num).join(", ")} kg (Semaine → Réglages).</p>`:""}
+    ${f!=="mob"?`<p class="muted" style="font-size:12px;margin:0">Les kg, l'élastique et les répétitions réglés ici seront proposés à ta prochaine séance. Tes élastiques : ${bandList().map(num).join(", ")} kg, modifiables dans les réglages.</p>`:""}
     ${groups.length?`<div class="card">${groups.map(g=>det(g,musRow)).join("")}</div>`:""}
     ${mobG.length?`<div class="card">${mobG.map(g=>det(g,id=>`<div data-lib="${esc(norm(MOBEX[id].n))}">${mobRow(id)}</div>`)).join("")}</div>`:""}
     <p class="muted" id="libnone" style="margin:0" hidden>Aucun exercice ne correspond.</p>
@@ -1381,12 +1420,12 @@ function applyLibFilter(){
 function viewCoach(){
   const sugg=["J'ai mal au genou ce matin, adapte ma séance","Je n'ai que 15 minutes ce matin, raccourcis la séance","Rends la séance un peu plus dure, je me sens en forme","Comment progresser au goblet squat si je plafonne à 24 kg ?"];
   const prop=(m,i)=>m.changes?.length||m.skipped?.length?`<div class="card stack" style="gap:6px;align-self:flex-start;max-width:88%;padding:12px">
-    <span class="eyebrow">Changements proposés</span>${(m.changes||[]).map(c=>`<div style="font-size:14px">• ${esc(c.label)}</div>`).join("")}
+    <b>Changements proposés</b>${(m.changes||[]).map(c=>`<div style="font-size:14px">• ${esc(c.label)}</div>`).join("")}
     ${(m.skipped||[]).map(t=>`<div class="muted" style="font-size:13px">Non retenu : ${esc(t)}</div>`).join("")}
     ${!m.changes?.length?"":m.applied?`<span class="tag up" style="align-self:flex-start">Appliqué à la séance du jour</span>`:m.ignored?`<span class="muted" style="font-size:13px">Ignoré</span>`:`<div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-apply="${i}" style="flex:1">Appliquer</button><button class="btn" data-ignore="${i}" style="flex:1">Ignorer</button></div>`}</div>`:"";
   return `<div class="stack">
-    <div class="header"><div><div class="eyebrow">IA</div><h1>Coach</h1></div></div>
-    ${!S.sample?`<div class="note stack" style="gap:10px"><span>Coach pas encore configuré sur ce téléphone. Renseigne l'adresse du proxy et ton code d'accès dans l'onglet Semaine. Le programme et le suivi fonctionnent sans lui.</span><button class="btn" data-tab="semaine" data-focus="c_url">Configurer le coach</button></div>`:`
+    <div class="header"><div><h1>Coach</h1><div class="sub">Pose une question ou demande-lui d'adapter ta séance.</div></div></div>
+    ${!S.sample?`<div class="note stack" style="gap:10px"><span>Coach pas encore configuré sur ce téléphone. Saisis ton code d'accès dans les réglages. Le programme et le suivi fonctionnent sans lui.</span><button class="btn" data-tab="reglages" data-focus="c_code">Configurer le coach</button></div>`:`
     <div class="msgs" id="msgs">${S.chat.length?S.chat.map((m,i)=>`<div class="msg ${m.role==="user"?"u":"a"}">${esc(m.content||"…")}</div>${prop(m,i)}`).join(""):
       `<div class="stack">${sugg.map(q=>`<button class="btn" data-q="${esc(q)}" style="text-align:left;font-weight:500">${esc(q)}</button>`).join("")}</div>`}</div>
     <form id="chatf" class="row" style="flex-wrap:nowrap"><input type="text" id="chatin" placeholder="Pose ta question" autocomplete="off"><button class="btn primary" ${S.chatBusy?"disabled":""}>Envoyer</button></form>`}
@@ -1463,14 +1502,14 @@ function advance(){
 const fmt=s=>`${Math.floor(Math.max(0,s)/60)}:${String(Math.max(0,s)%60).padStart(2,"0")}`;
 function stepLabel(st){
   if(!st) return "Fin";
-  if(st.kind==="run") return `${st.label} · ${st.speed} km/h`;
+  if(st.kind==="run") return `${st.label}, ${num(st.speed)} km/h`;
   if(st.kind==="timer") return st.label;
   if(st.kind==="weight") return `Bloc ${String.fromCharCode(64+st.bi)}`;
   return EX[st.id].n;
 }
 function viewLive(){
   const L=S.live; const st=L.steps[L.i]; const pct=Math.round(100*L.i/L.steps.length);
-  const head=`<div class="row between"><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" id="quit">Quitter</button><button class="btn" id="prev" aria-label="Revenir à l'étape précédente" ${L.i===0?"disabled":""}>← Retour</button></div><span class="num" id="clock" style="font-size:20px">${fmt(Math.round((Date.now()-L.t0)/1000))}</span></div><div class="progress"><i style="width:${pct}%"></i></div>`;
+  const head=`<div class="row between"><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="btn" id="quit">Quitter</button><button class="btn" id="prev" aria-label="Revenir à l'étape précédente" ${L.i===0?"disabled":""}>${ICON.back}Retour</button></div><span class="num" id="clock" style="font-size:20px">${fmt(Math.round((Date.now()-L.t0)/1000))}</span></div><div class="progress"><i style="width:${pct}%"></i></div>`;
   if(L.done&&L.routine){
     const pause=L.routine.kind==="pause";
     return `${head}<div class="stage"><div class="eyebrow">${pause?"Pause terminée":"Routine terminée"}</div><div class="what">${pause?"Retour au bureau.":"Bien joué."}</div>
@@ -1488,44 +1527,54 @@ function viewLive(){
   if(st.kind==="run"||st.kind==="timer"){
     body=`${st.kind==="run"?`<div class="hero-ill">${illus("run")}</div>`:st.id&&POSE[st.id]?`<div class="hero-ill">${illus(st.id)}</div>`:""}<div class="eyebrow">${esc(st.title||"Fin de séance")}</div><div class="what">${esc(st.label)}</div>
       ${st.kind==="run"?`<div class="stepper"><button data-spd="-1" aria-label="Moins vite">−</button><div class="v">${num(st.speed)}<span class="u">km/h</span></div><button data-spd="1" aria-label="Plus vite">+</button></div>`:`<div class="muted">${esc(st.txt)}</div>`}
-      <div class="big" id="left">${fmt(L.left)}</div>${st.extra?`<div class="muted">${esc(st.extra)}</div>`:""}
+      <div class="timer" id="left">${fmt(L.left)}</div>${st.extra?`<div class="muted">${esc(st.extra)}</div>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="m30" style="flex:1">−30 s</button><button class="btn" id="p30" style="flex:1">+30 s</button><button class="btn primary" id="next" style="flex:2">Passer</button></div>`;
   } else if(st.kind==="weight"){
-    body=`<div class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · ${it.rounds} tours${L.plan.rest?` · repos ${L.plan.rest} s`:" sans repos"}</div>
+    body=`<div class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)}, ${it.rounds} tours${L.plan.rest?`, repos ${L.plan.rest} s`:" sans repos"}</div>
       <div class="what">${it.w?`Règle les haltères`:it.pair.some(id=>EX[id].eq==="band")?`Prépare l'élastique`:`Pas d'haltères`}</div>
-      ${it.pair.filter(id=>EX[id].eq==="band").map(id=>`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:13px">Élastique · ${esc(EX[id].n)} · ${anchorIcon(EX[id].a)}</span>${bandAdj(id)}</div>`).join("")}
+      ${it.pair.filter(id=>EX[id].eq==="band").map(id=>`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:14px">${esc(EX[id].n)}, élastique ${anchorIcon(EX[id].a)}</span>${bandAdj(id)}</div>`).join("")}
       ${it.w?`<div class="stepper"><button data-w="-1" aria-label="Moins lourd">−</button><div class="v">${it.w}<span class="u">kg par haltère</span></div><button data-w="1" aria-label="Plus lourd">+</button></div>`:""}
       <div class="duo">${it.pair.map(id=>`<div class="thumb">${illus(id)}</div>`).join("")}</div>
-      <div class="stack" style="gap:6px">${it.pair.map((id,k)=>`<div><b>${esc(EX[id].n)}</b> <span class="muted">${EX[id].eq==="band"?`· élastique ${EX[id].a}`:""}</span><div class="muted" style="font-size:13px">${esc(EX[id].cue)}</div></div>`).join("")}</div>
+      <div class="stack" style="gap:6px">${it.pair.map((id,k)=>`<div><b>${esc(EX[id].n)}</b> <span class="muted">${EX[id].eq==="band"?`élastique ${EX[id].a}`:""}</span><div class="muted" style="font-size:13px">${esc(EX[id].cue)}</div></div>`).join("")}</div>
       <button class="btn primary big" id="next">C'est prêt</button>`;
   } else {
     const e=EX[st.id]; const isHold=!!e.hold; const tgt=it.targets[st.k];
-    body=`<div class="row between"><span class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · tour ${st.r+1}/${it.rounds} · ${st.k===0?"A":"B"}</span>${e.eq==="band"?`<span class="tag">${anchorIcon(e.a)}</span>`:""}</div>
+    body=`<div class="row between"><span class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)}, tour ${st.r+1} sur ${it.rounds}</span>${e.eq==="band"?`<span class="tag">${anchorIcon(e.a)}</span>`:""}</div>
       ${e.eq==="db"?`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:13px">Charge par haltère</span><span class="adj"><button class="mini" data-w="-1" aria-label="Moins lourd">−</button><span class="tag kg num" style="min-width:56px;text-align:center">${num(it.w)} kg</span><button class="mini" data-w="1" aria-label="Plus lourd">+</button></span></div>`
         :e.eq==="band"?`<div class="row between" style="flex-wrap:nowrap"><span class="muted" style="font-size:13px">Élastique</span>${bandAdj(st.id)}</div>`:""}
       <div class="hero-ill">${illus(st.id)}</div>
       <div class="what">${esc(e.n)}</div><div class="muted">${esc(e.cue)} Objectif : ${tgt} ${isHold?"s":"reps"}${e.uni?" par côté":""}.</div>
       <div class="stepper"><button data-v="-1" aria-label="Moins">−</button><div class="v">${L.val}<span class="u">${isHold?"secondes":"reps faites"}${e.uni?" / côté":""}</span></div><button data-v="1" aria-label="Plus">+</button></div>
-      <button class="btn primary big" id="next">Fait → ${nx?.kind==="set"&&nx.ii===st.ii?"enchaîne":"suite"}</button>`;
+      <button class="btn primary big" id="next">Série faite</button>`;
   }
-  return `${head}<div class="stage">${body}</div><div class="next">Ensuite : <b>${esc(stepLabel(nx))}</b></div>`;
+  const enter=L.i!==L.shown; L.shown=L.i;
+  return `${head}<div class="stage${enter?" enter":""}">${body}</div><div class="next">Ensuite : <b>${esc(stepLabel(nx))}</b></div>`;
 }
 async function saveLive(){
   const L=S.live; const s={id:"s_"+Date.now(),date:new Date().toISOString(),type:L.plan.type,dur:Math.round((Date.now()-L.t0)/1000),
     rpe:L.rpe,note:L.note.slice(0,300),checkin:{...S.ci},
     blocks:L.plan.items.filter(i=>i.kind==="pair").map(i=>({pair:i.pair,w:i.w,bands:Object.fromEntries(i.pair.filter(id=>EX[id].eq==="band").map(id=>[id,bandKg(id)])),log:i.log.filter(r=>r.some(x=>x!=null))}))};
   S.sessions.push(s); await store.saveSession(s);
-  endLive(); S.tab="histo"; S.adj={intensite:0,zones:[],msg:""}; S.override=null; S.mods=null; saveMods(); render();
+  endLive(); S.tab="progres"; S.adj={intensite:0,zones:[],msg:""}; S.override=null; S.mods=null; saveMods(); render();
   aiDebrief(s);
 }
 function endLive(){try{window.speechSynthesis?.cancel();}catch(e){}clearInterval(tick);tick=null;try{wake?.release();}catch(e){} wake=null;S.live=null;}
 
+function applyTheme(){
+  const t=S.settings.theme||"auto", h=new Date().getHours();
+  const dark=t==="dark"||(t==="auto"&&(h<8||h>=20||matchMedia("(prefers-color-scheme: dark)").matches));
+  document.documentElement.dataset.theme=dark?"dark":"light";
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=dark?"#141A33":"#E9ECF5";
+}
+const TABS=[["seance","Aujourd'hui"],["pause","Mobilité"],["biblio","Exercices"],["progres","Progrès"],["coach","Coach"]];
 function render(){
   const app=$("#app");
   if(S.live){ app.innerHTML=`<div class="live"><div class="wrap">${viewLive()}</div></div>`; return; }
-  const v={seance:viewSeance,pause:viewPause,biblio:viewBiblio,semaine:viewSemaine,histo:viewHisto,coach:viewCoach}[S.tab]();
-  const deb=S.tab==="histo"&&S.debrief?`<div class="note ai" style="margin-bottom:12px"><div class="eyebrow" style="margin-bottom:4px">Débrief du coach</div><div id="debrief" style="white-space:pre-wrap">${esc(S.debrief)}</div></div>`:"";
-  app.innerHTML=`<div class="wrap">${deb}${v}</div><nav class="tabs"><div class="in">${[["seance","Séance"],["pause","Mobilité"],["biblio","Biblio"],["semaine","Semaine"],["histo","Suivi"],["coach","Coach"]].map(([k,l])=>`<button data-tab="${k}" aria-current="${S.tab===k}">${ICON[k]}${l}</button>`).join("")}</div></nav>`;
+  if(S.tab==="semaine"||S.tab==="histo") S.tab="progres";
+  const v={seance:viewSeance,pause:viewPause,biblio:viewBiblio,progres:viewProgres,reglages:viewReglages,coach:viewCoach}[S.tab]();
+  const deb=S.tab==="progres"&&S.debrief?`<div class="note ai" style="margin-bottom:14px"><b style="display:block;margin-bottom:4px">Débrief du coach</b><div id="debrief" style="white-space:pre-wrap">${esc(S.debrief)}</div></div>`:"";
+  const start=S.tab==="seance"?`<div class="startbar"><button class="btn primary big" id="start">Démarrer la séance</button></div>`:"";
+  app.innerHTML=`<div class="wrap${start?" has-start":""}">${deb}${v}</div>${start}<nav class="tabs" aria-label="Navigation"><div class="in">${TABS.map(([k,l])=>`<button data-tab="${k}" aria-current="${S.tab===k}">${ICON[k]}${l}</button>`).join("")}</div></nav>`;
   applyLibFilter();
 }
 
@@ -1533,7 +1582,7 @@ function render(){
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   const L=S.live;
-  if(b.dataset.tab){S.tab=b.dataset.tab;if(b.dataset.lf)S.lf=b.dataset.lf;render();window.scrollTo(0,0);if(b.dataset.focus)$("#"+b.dataset.focus)?.scrollIntoView({block:"center"});return;}
+  if(b.dataset.tab){if(b.dataset.tab==="reglages"&&S.tab!=="reglages")S.prevTab=S.tab;S.tab=b.dataset.tab;if(b.dataset.lf)S.lf=b.dataset.lf;render();window.scrollTo(0,0);if(b.dataset.focus)$("#"+b.dataset.focus)?.scrollIntoView({block:"center"});return;}
   if(b.dataset.ci){const k=b.dataset.ci,v=b.dataset.v;S.ci[k]=k==="sommeil"?v:Number(v);render();return;}
   if(b.id==="aiadj"){S.ci.txt=$("#citxt").value;aiAdjust();return;}
   if(b.id==="start"){S.ci.txt=$("#citxt")?.value||S.ci.txt;startLive();return;}
@@ -1544,6 +1593,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.apply){applyChanges(+b.dataset.apply);render();return;}
   if(b.dataset.ignore){S.chat[+b.dataset.ignore].ignored=true;render();return;}
   if(b.id==="undomods"){undoMods();render();return;}
+  if(b.dataset.th){S.settings.theme=b.dataset.th;store.saveSettings();applyTheme();render();return;}
   if(b.dataset.lf){S.lf=b.dataset.lf;render();return;}
   if(b.dataset.adj||b.dataset.band||b.dataset.reset){
     if(b.dataset.adj) adjustEx(b.dataset.ex,b.dataset.adj,+b.dataset.d);
@@ -1555,7 +1605,7 @@ document.addEventListener("click",e=>{
   if(b.dataset.cz){const z=b.dataset.cz;S.cz=S.cz.includes(z)?S.cz.filter(x=>x!==z):[...S.cz,z];render();return;}
   if(b.dataset.cd){S.cd=+b.dataset.cd;render();return;}
   if(b.dataset.cs){S.cs=b.dataset.cs;render();return;}
-  if(b.dataset.bilan){S.testForm=true;S.tab="histo";render();$("#bilan")?.scrollIntoView({block:"start"});return;}
+  if(b.dataset.bilan){S.testForm=true;S.tab="progres";render();$("#bilan")?.scrollIntoView({block:"start"});return;}
   if(b.id==="canceltest"){S.testForm=false;render();return;}
   if(b.id==="savetest"){saveTest();return;}
   if(b.dataset.rest!=null){S.settings.rest=+b.dataset.rest;store.saveSettings();render();return;}
@@ -1623,7 +1673,9 @@ function saveCoach(){
   S.sample=makeSample(c); if(c.code) mirrorConf(c); backup.schedule(); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
 }
 // mémorise les groupes ouverts de la bibliothèque d'un rendu à l'autre
-document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset?.g||S.filtering||S.lq.trim()) return; d.open?S.libOpen.add(d.dataset.g):S.libOpen.delete(d.dataset.g); },true);
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d.dataset?.g||S.filtering) return;
+  const set=d.dataset.g.startsWith("b-")?S.planOpen:S.libOpen; if(set===S.libOpen&&S.lq.trim()) return;
+  d.open?set.add(d.dataset.g):set.delete(d.dataset.g); },true);
 document.addEventListener("input",e=>{ if(e.target.id==="temps"){const v=$("#tval"); if(v) v.textContent=`${e.target.value} min`; return;} if(e.target.id==="libq"){S.lq=e.target.value;applyLibFilter();return;} if(e.target.id?.startsWith("t_")){const er=$("#t_err"); if(er) er.hidden=true;} if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
 document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefault();const v=$("#chatin").value;aiChat(v);} });
 
@@ -1632,7 +1684,7 @@ render();
 (async()=>{
   let fresh=true; try{ fresh=!localStorage.getItem("creneau"); }catch(e){}
   backup.synced=!fresh;
-  await store.init();
+  await store.init(); applyTheme();
   if(!coachConf().code&&await recoverConf()) S.sample=makeSample(coachConf());
   else if(coachConf().code) mirrorConf(coachConf());
   // mémoire vide mais coach configuré : on récupère la sauvegarde avant toute écriture
@@ -1641,7 +1693,7 @@ render();
   render();
 })();
 // app mise en arrière-plan : on envoie tout de suite la sauvegarde en attente
-document.addEventListener("visibilitychange",()=>{ if(document.hidden&&backup.timer) backup.push(); });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&backup.timer) backup.push(); if(!document.hidden) applyTheme(); });
 if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 

@@ -1,6 +1,6 @@
 // Service worker : tout le shell est précaché, l'app tourne hors ligne.
 // Incrémenter CACHE_VERSION à chaque déploiement qui modifie un de ces fichiers.
-const CACHE_VERSION = "creneau-v11";
+const CACHE_VERSION = "creneau-v12";
 const SHELL = [
   "./",
   "index.html",
@@ -9,13 +9,7 @@ const SHELL = [
   "icons/icon-512.png",
   "icons/maskable-512.png",
   "icons/apple-touch-icon.png",
-  "fonts/barlow-condensed-500.woff2",
-  "fonts/barlow-condensed-600.woff2",
-  "fonts/barlow-condensed-700.woff2",
-  "fonts/ibm-plex-sans-400.woff2",
-  "fonts/ibm-plex-sans-500.woff2",
-  "fonts/ibm-plex-sans-600.woff2",
-  "fonts/ibm-plex-mono-500.woff2",
+  "fonts/archivo-wdth.woff2",
 ];
 
 self.addEventListener("install", e => {
