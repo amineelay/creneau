@@ -1,6 +1,6 @@
 // Service worker : tout le shell est précaché, l'app tourne hors ligne.
 // Incrémenter CACHE_VERSION à chaque déploiement qui modifie un de ces fichiers.
-const CACHE_VERSION = "creneau-v5";
+const CACHE_VERSION = "creneau-v6";
 const SHELL = [
   "./",
   "index.html",
@@ -25,7 +25,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith("creneau-v") && k !== CACHE_VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

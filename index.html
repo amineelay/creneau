@@ -480,7 +480,7 @@ function illus(id){
 }
 
 // ---------- State ----------
-const S = {settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],mob:{},cz:["hanches","dos"],cd:10,cs:"dyn",tab:"seance",override:null,
+const S = {settings:structuredClone(DEF),sessions:[],pauses:{},tests:[],mob:{},mods:(()=>{try{return JSON.parse(localStorage.getItem("creneau.mods"));}catch(e){return null;}})(),cz:["hanches","dos"],cd:10,cs:"dyn",tab:"seance",override:null,
   ci:{sommeil:"bien",energie:2,temps:null,txt:""},adj:{intensite:0,zones:[],msg:""},
   aiBusy:false,live:null,chat:[],chatBusy:false,debrief:"",storage:"local",sample:null};
 
@@ -535,7 +535,27 @@ const store = {
 
 // ---------- Coach IA : proxy Cloudflare Worker (même interface que l'ancien claude.use("sample")) ----------
 const COACH_KEY="creneau.coach";
-function coachConf(){ try{ return JSON.parse(localStorage.getItem(COACH_KEY))||{}; }catch(e){ return {}; } }
+// l'adresse du relais n'est pas secrète : elle est pré-remplie, seul le code d'accès est à saisir
+const DEFAULT_COACH_URL="https://creneau-coach.creneaubystep.workers.dev";
+function coachConf(){ let c={}; try{ c=JSON.parse(localStorage.getItem(COACH_KEY))||{}; }catch(e){} return {url:c.url||DEFAULT_COACH_URL,code:c.code||""}; }
+// copie du réglage du coach dans IndexedDB et le cache : si seul le localStorage est vidé, on le retrouve
+function idb(mode,fn){ return new Promise((res,rej)=>{ const o=indexedDB.open("creneau",1);
+  o.onupgradeneeded=()=>o.result.createObjectStore("kv"); o.onerror=()=>rej(o.error);
+  o.onsuccess=()=>{ const tx=o.result.transaction("kv",mode), r=fn(tx.objectStore("kv")); tx.oncomplete=()=>res(r?.result); tx.onerror=()=>rej(tx.error); }; }); }
+async function mirrorConf(c){
+  try{ await idb("readwrite",s=>s.put(c,"coach")); }catch(e){}
+  try{ await (await caches.open("creneau-conf")).put("conf",new Response(JSON.stringify(c))); }catch(e){}
+}
+async function recoverConf(){
+  let c=null;
+  try{ c=await idb("readonly",s=>s.get("coach")); }catch(e){}
+  if(!c?.code) try{ c=await (await (await caches.open("creneau-conf")).match("conf"))?.json(); }catch(e){}
+  if(!c?.code) return false;
+  try{ localStorage.setItem(COACH_KEY,JSON.stringify(c)); }catch(e){}
+  return true;
+}
+// compteur d'ouvertures : s'il retombe à 1 à chaque lancement, le téléphone efface la mémoire de l'app
+const BOOTS=(()=>{ try{ const b=JSON.parse(localStorage.getItem("creneau.boots"))||{n:0,since:new Date().toISOString()}; b.n++; localStorage.setItem("creneau.boots",JSON.stringify(b)); return b; }catch(e){ return null; } })();
 function coachErr(res){ const e=new Error("coach "+res.status); e.code=res.status===429?"rate_limited":res.status===401?"unauthorized":"error"; return e; }
 function makeSample({url,code}){
   if(!url||!code) return null;
@@ -562,17 +582,23 @@ function makeSample({url,code}){
     if(!res.ok) throw coachErr(res);
     return res.json();
   };
+  sample.plan=async prompt=>{
+    const res=await fetch(base+"/plan",{method:"POST",headers,body:JSON.stringify({prompt})});
+    if(!res.ok) throw coachErr(res);
+    return res.json();
+  };
   return sample;
 }
 
 // ---------- Sauvegarde auto sur le Worker (même adresse et même code que le coach) ----------
 const backup = {
-  timer:null, err:null,
+  timer:null, err:null, synced:true,
   at:(()=>{ try{ return +localStorage.getItem("creneau.backupAt")||0; }catch(e){ return 0; } })(),
   conf(){ const c=coachConf(); return c.url&&c.code ? {base:c.url.replace(/\/+$/,""),code:c.code} : null; },
   schedule(){ if(!this.conf()) return; clearTimeout(this.timer); this.timer=setTimeout(()=>this.push(),5000); },
   async push(){
     clearTimeout(this.timer); this.timer=null; const c=this.conf(); if(!c) return;
+    if(!this.synced){ try{ await this.restore(); this.synced=true; }catch(e){ this.err="pas de réseau"; return; } }
     const body=JSON.stringify(store.data());
     try{
       const r=await fetch(c.base+"/backup",{method:"PUT",headers:{"Content-Type":"application/json","X-Access-Code":c.code},body,keepalive:body.length<60000});
@@ -746,13 +772,15 @@ function buildPlan(){
     for(let i=0;i<n;i++){steps.push({label:`Rapide ${i+1}/${n}`,sec:60,speed:f});steps.push({label:"Récup marche",sec:60,speed:6});}
     items.push({kind:"run",title:`Fractionné ${n} × 1′/1′`,steps});
   }
-  tpl.blocks.forEach(opts=>{
-    const pair=opts[k%opts.length].map(id=>{const s=swapFor(id,zones,used); used.add(s); return s;});
-    const rounds=Math.max(2,tpl.rounds+(inten<0?-1:0));
+  const md=modsToday(type), sw=id=>md?.swaps?.[id]||id;
+  tpl.blocks.forEach((opts,bix)=>{
+    if(md?.removed?.includes(bix)) return;
+    const pair=opts[k%opts.length].map(sw).map(id=>{const s=sw(swapFor(id,zones,used)); used.add(s); return s;});
+    const rounds=md?.rounds?.[bix]??Math.max(2,tpl.rounds+(inten<0?-1:0));
     const sug=pair.map(suggest);
     const dbIx=pair.findIndex(id=>EX[id].eq==="db");
     let w=dbIx>=0?sug[dbIx].w:null; if(w&&inten<0&&!sug[dbIx].manual) w=clampW(w-st.step);
-    items.push({kind:"pair",pair,rounds,w,sug,targets:sug.map(x=>x.target)});
+    items.push({kind:"pair",bix,pair,rounds,w,sug,targets:sug.map(x=>x.target)});
   });
   if(tpl.fin){
     const n=inten<0?4:6, f=Math.min(16,st.fast+1), steps=[];
@@ -761,7 +789,7 @@ function buildPlan(){
   }
   if(tpl.long) items.push({kind:"run",title:"Retour au calme tapis",steps:[{label:"Footing facile",sec:600,speed:st.easy},{label:"Marche",sec:120,speed:5}]});
   items.push({kind:"mob",title:"Mobilité posture",moves:tpl.short?routine(MOB.slice(0,3),150):routine(MOB,240)});
-  const p={type,title:tpl.t,items,inten,zones,deload:deload(),rest:st.rest||0};
+  const p={type,title:tpl.t,items,inten,zones,deload:deload(),rest:st.rest||0,mods:!!md};
   // ajustement au temps dispo : 3 tours, puis on retire des blocs depuis la fin
   const pairs=()=>p.items.filter(i=>i.kind==="pair");
   let guard=0;
@@ -815,15 +843,80 @@ Historique : ${histSummary(8)}
   catch(e){ S.debrief=""; }
   render();
 }
+// le chat peut proposer des changements de séance ; ils ne s'appliquent qu'après « Appliquer »
+const EQL={db:"haltères",band:"élastique",bw:"poids du corps"};
+function planForCoach(p){
+  const pairs=p.items.filter(i=>i.kind==="pair");
+  if(!pairs.length) return "aucun bloc de renforcement (séance de cardio).";
+  return pairs.map(it=>`Bloc ${it.bix+1} (${it.rounds} tours) : `+it.pair.map((id,k)=>{const e=EX[id];
+    return `${id} = ${e.n} [${EQL[e.eq]}]${e.eq==="db"&&it.w?` ${num(it.w)} kg`:""} × ${it.targets[k]}${e.hold?" s":" reps"}${e.uni?" par côté":""}`;}).join(" ; ")).join("\n");
+}
+function checkChanges(list,p){
+  const pairs=p.items.filter(i=>i.kind==="pair"), inPlan=id=>pairs.find(i=>i.pair.includes(id)), out=[];
+  const bloc=n=>pairs.find(i=>i.bix===n-1), names=it=>it.pair.map(x=>EX[x].n).join(" + ");
+  for(const c of (Array.isArray(list)?list:[]).slice(0,8)){
+    const e=EX[c.ex];
+    if(c.op==="swap"){ const it=inPlan(c.ex); if(!it||!EX[c.to]||inPlan(c.to)) continue;
+      if(it.pair.map(x=>x===c.ex?c.to:x).filter(x=>EX[x].eq==="db").length>1) continue;
+      out.push({op:"swap",ex:c.ex,to:c.to,label:`Remplacer ${e.n} par ${EX[c.to].n}`}); }
+    else if(c.op==="reps"){ if(!e) continue; const v=Math.round(c.value); if(v<(e.hold?10:1)||v>(e.hold?180:40)) continue;
+      out.push({op:"reps",ex:c.ex,value:v,label:`${e.n} : ${v}${e.hold?" s":" reps"}`}); }
+    else if(c.op==="kg"){ if(e?.eq!=="db"||!(c.value>0)) continue; const v=clampW(c.value);
+      out.push({op:"kg",ex:c.ex,value:v,label:`${e.n} : ${num(v)} kg`}); }
+    else if(c.op==="rounds"){ const it=bloc(c.bloc), v=Math.round(c.value); if(!it||v<1||v>6) continue;
+      out.push({op:"rounds",bloc:c.bloc,value:v,label:`${names(it)} : ${v} tours`}); }
+    else if(c.op==="remove"){ const it=bloc(c.bloc); if(!it||pairs.length<2||out.some(o=>o.op==="remove")) continue;
+      out.push({op:"remove",bloc:c.bloc,label:`Retirer le bloc ${names(it)}`}); }
+  }
+  return out;
+}
+function saveMods(){ try{ S.mods?localStorage.setItem("creneau.mods",JSON.stringify(S.mods)):localStorage.removeItem("creneau.mods"); }catch(e){} }
+function modsToday(type){ const m=S.mods; return m&&m.day===dayKey(new Date())&&m.type===type?m:null; }
+function applyChanges(i){
+  const msg=S.chat[i]; if(!msg?.changes) return;
+  const p=buildPlan(), md=modsToday(p.type)||{day:dayKey(new Date()),type:p.type,swaps:{},rounds:{},removed:[],loadsBefore:{}};
+  const loads=S.settings.loads||(S.settings.loads={}), now=new Date().toISOString();
+  for(const c of msg.changes){
+    if(c.op==="swap"){ const orig=Object.keys(md.swaps).find(k=>md.swaps[k]===c.ex)||c.ex; md.swaps[orig]=c.to; }
+    else if(c.op==="reps"||c.op==="kg"){
+      if(!(c.ex in md.loadsBefore)) md.loadsBefore[c.ex]=loads[c.ex]??null;
+      loads[c.ex]={...(manual(c.ex)||{}),[c.op==="kg"?"w":"t"]:c.value,at:now};
+    }
+    else if(c.op==="rounds") md.rounds[c.bloc-1]=c.value;
+    else if(c.op==="remove"&&!md.removed.includes(c.bloc-1)) md.removed.push(c.bloc-1);
+  }
+  S.mods=md; saveMods(); store.saveSettings(); msg.applied=true;
+}
+function undoMods(){
+  const loads=S.settings.loads||{};
+  for(const [id,v] of Object.entries(S.mods?.loadsBefore||{})){ if(v==null) delete loads[id]; else loads[id]=v; }
+  S.mods=null; saveMods(); store.saveSettings();
+}
 async function aiChat(q){
   if(!S.sample||!q.trim()) return;
   S.chat.push({role:"user",content:q}); S.chat.push({role:"assistant",content:""}); S.chatBusy=true; render();
-  const ctx=`Contexte (ne pas répéter) : tu es le coach d'Amine. Matériel : barre Smartworkout avec 5 fixations murales (1 haute, 2 mi-hauteur écartées, 2 au sol écartées), tapis de course jusqu'à 16 km/h, tapis de sol, 2 haltères réglables 2–24 kg, banc. Actif de bureau, 3 séances par semaine à 5h50 (force full body, cardio modéré). Il ne veut pas re-régler les haltères à l'intérieur d'un duo. Priorité : santé et régularité. Historique : ${histSummary(8)}. Séance du jour : ${planText(buildPlan())}. Réponds en français, concis, précis.\n\nQuestion : `;
-  const msgs=S.chat.slice(0,-1).map((m,i)=>({role:m.role,content:i===0?ctx+m.content:m.content}));
+  const p=buildPlan();
+  const conv=S.chat.slice(0,-2).slice(-8).map(m=>`${m.role==="user"?"Amine":"Coach"} : ${m.content}`).join("\n");
+  const prompt=`Tu es le coach sportif d'Amine : actif de bureau, séances à la maison à 5h50, 3 par semaine, objectif santé et régularité.
+Matériel : barre Smartworkout avec 5 fixations murales (1 haute, 2 mi-hauteur écartées, 2 au sol écartées), tapis de course jusqu'à 16 km/h, tapis de sol, 2 haltères réglables 2–24 kg, banc.
+Séance du jour « ${p.title} », modifiable :
+${planForCoach(p)}
+Catalogue des exercices possibles (id : nom, matériel, mouvement) :
+${Object.entries(EX).map(([id,e])=>`${id} : ${e.n}, ${EQL[e.eq]}, ${e.p}${e.z.length?`, sollicite ${e.z.join("/")}`:""}`).join("\n")}
+Règles pour les changements :
+- au plus un exercice aux haltères par bloc (il ne règle les haltères qu'entre deux blocs) ;
+- kg entre 2 et 24 par crans de ${num(S.settings.step)} kg ; répétitions entre 1 et 40 ; 10 à 180 secondes pour les gainages ; 1 à 6 tours ;
+- propose des changements seulement si Amine le demande ou signale une douleur, une fatigue ou une contrainte de temps ; sinon changes = [] ;
+- si une douleur est vive ou inhabituelle, conseille de consulter.
+Opérations (champs inutilisés : "" ou 0) : swap (ex = id dans la séance, to = id du catalogue), reps (ex, value), kg (ex, value), rounds (bloc = numéro du bloc, value), remove (bloc).
+Historique récent :
+${histSummary(6)}
+${conv?`Conversation :\n${conv}\n`:""}Amine : ${q}
+Réponds avec message (2 à 5 phrases, tutoiement, sans emoji ; si tu proposes des changements, dis pourquoi en une phrase) et changes.`;
   try{
-    const r=await S.sample(msgs,{cache:false,onText:({text})=>{S.chat.at(-1).content=text;const el=document.querySelector(".msg.a:last-child");if(el)el.textContent=text;}});
-    S.chat.at(-1).content=r.text;
-  }catch(e){ S.chat.at(-1).content="Pas de réponse du coach pour l'instant."; }
+    const r=await S.sample.plan(prompt), a=S.chat.at(-1);
+    a.content=String(r?.message||"").slice(0,1500)||"…"; a.changes=checkChanges(r?.changes,p);
+  }catch(e){ S.chat.at(-1).content=e?.code==="rate_limited"?"Coach saturé, réessaie dans une minute.":"Pas de réponse du coach pour l'instant."; }
   S.chatBusy=false; render(); const m=$("#msgs"); m&&m.lastElementChild?.scrollIntoView({block:"end"});
 }
 
@@ -882,6 +975,7 @@ function viewSeance(){
   const dl={fatigue:"Tes 3 dernières séances étaient très dures (RPE 9 ou plus) : séance allégée pour récupérer.",cycle:"Semaine allégée : après 4 semaines d'entraînement, on lève le pied pour mieux progresser ensuite."}[p.deload];
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">${now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div><h1>${esc(p.title)}</h1></div><span class="slot">${p.type==="full60"?"samedi · 1 h":"5:50 → 6:25"}</span></div>
+    ${S.bootNote?`<div class="note" style="border-left-color:var(--good);background:var(--good-soft)">${esc(S.bootNote)}</div>`:""}
     ${doneToday?`<div class="note" style="border-left-color:var(--good);background:var(--good-soft)">Séance du jour enregistrée. Tu peux en refaire une ou passer à demain.</div>`:""}
     <div class="card stack">
       <div class="row between"><h3>Check-in</h3><select id="type" aria-label="Type de séance" style="width:auto">${typeOpts}</select></div>
@@ -896,6 +990,7 @@ function viewSeance(){
     ${(()=>{const t=S.tests.at(-1), age=t?Math.floor((Date.now()-new Date(t.date))/864e5):null;
       if(t&&age<TEST_EVERY_DAYS) return "";
       return `<div class="note stack" style="gap:10px;border-left-color:var(--accent);background:var(--accent-soft)"><span>${t?`Ton dernier bilan de forme date de ${Math.floor(age/7)} semaines : refais-le cette semaine pour mesurer tes progrès.`:"Fais un premier bilan de forme (10 minutes) pour pouvoir mesurer tes progrès."}</span><button class="btn" data-bilan="1">Faire le bilan</button></div>`;})()}
+    ${p.mods?`<div class="note ai row between" style="flex-wrap:nowrap;gap:10px"><span>Séance modifiée par le coach.</span><button class="btn" id="undomods" style="flex:none">Annuler</button></div>`:""}
     ${!plannedDay(now)&&!doneToday&&!S.mob[dayKey(now)]?.wake?`<div class="note stack" style="gap:10px;border-left-color:var(--good);background:var(--good-soft)"><span>Pas de séance prévue aujourd'hui. 10 minutes de mobilité au réveil gardent le rythme.</span><button class="btn" data-routine="wake">Lancer le réveil 10′</button></div>`:""}
     ${S.adj.msg?`<div class="note ai">${esc(S.adj.msg)}</div>`:""}
     ${(p.zones.length||p.inten)?`<div class="tags">${p.deload?'<span class="tag">semaine allégée</span>':""}${p.inten<0&&!p.deload?'<span class="tag">intensité −1</span>':""}${p.inten>0?'<span class="tag up">bonne forme</span>':""}${p.zones.map(z=>`<span class="tag">évite : ${ZONES[z]}</span>`).join("")}</div>`:""}
@@ -973,11 +1068,12 @@ function viewSemaine(){
     <div class="card stack"><h3>Données</h3>
       <p class="muted" style="font-size:13px;margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais Cloudflare.</p>
       <p class="muted" id="bk_state" style="font-size:12px;margin:0">${esc(backupText())}</p>
+      ${BOOTS?`<p class="muted" style="font-size:12px;margin:0">Mémoire de l'app : ${BOOTS.n} ouverture${BOOTS.n>1?"s":""} depuis le ${new Date(BOOTS.since).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}${BOOTS.n===1?" (si ce chiffre reste à 1 à chaque ouverture, le téléphone efface la mémoire de l'app)":""}.</p>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label>${backup.conf()?`<button class="btn" id="rst" style="flex:1">Restaurer</button>`:""}</div>
       ${S.impMsg?`<div class="muted" style="font-size:13px">${esc(S.impMsg)}</div>`:""}
     </div>
     <div class="card stack"><h3>Coach IA</h3>
-      <label class="field"><span>Adresse du proxy</span><input type="text" id="c_url" inputmode="url" autocomplete="off" placeholder="https://creneau-coach.xxx.workers.dev" value="${esc(coachConf().url||"")}"></label>
+      <label class="field"><span>Adresse du proxy</span><input type="text" id="c_url" inputmode="url" autocomplete="off" placeholder="${DEFAULT_COACH_URL}" value="${esc(coachConf().url)}"></label>
       <label class="field"><span>Code d'accès</span><input type="text" id="c_code" autocomplete="off" value="${esc(coachConf().code||"")}"></label>
       <p class="muted" id="c_state" style="font-size:12px;margin:0">${S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer."}</p>
     </div>
@@ -1104,11 +1200,14 @@ function viewPause(){
   </div>`;
 }
 function viewCoach(){
-  const sugg=["Comment progresser au goblet squat si je plafonne à 24 kg ?","Je n'ai que 15 minutes ce matin, quoi faire ?","Quel réglage d'élastique pour le face pull ?"];
+  const sugg=["J'ai mal au genou ce matin, adapte ma séance","Je n'ai que 15 minutes ce matin, raccourcis la séance","Rends la séance un peu plus dure, je me sens en forme","Comment progresser au goblet squat si je plafonne à 24 kg ?"];
+  const prop=(m,i)=>m.changes?.length?`<div class="card stack" style="gap:6px;align-self:flex-start;max-width:88%;padding:12px">
+    <span class="eyebrow">Changements proposés</span>${m.changes.map(c=>`<div style="font-size:14px">• ${esc(c.label)}</div>`).join("")}
+    ${m.applied?`<span class="tag up" style="align-self:flex-start">Appliqué à la séance du jour</span>`:m.ignored?`<span class="muted" style="font-size:13px">Ignoré</span>`:`<div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-apply="${i}" style="flex:1">Appliquer</button><button class="btn" data-ignore="${i}" style="flex:1">Ignorer</button></div>`}</div>`:"";
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">IA</div><h1>Coach</h1></div></div>
     ${!S.sample?`<div class="note stack" style="gap:10px"><span>Coach pas encore configuré sur ce téléphone. Renseigne l'adresse du proxy et ton code d'accès dans l'onglet Semaine. Le programme et le suivi fonctionnent sans lui.</span><button class="btn" data-tab="semaine" data-focus="c_url">Configurer le coach</button></div>`:`
-    <div class="msgs" id="msgs">${S.chat.length?S.chat.map(m=>`<div class="msg ${m.role==="user"?"u":"a"}">${esc(m.content||"…")}</div>`).join(""):
+    <div class="msgs" id="msgs">${S.chat.length?S.chat.map((m,i)=>`<div class="msg ${m.role==="user"?"u":"a"}">${esc(m.content||"…")}</div>${prop(m,i)}`).join(""):
       `<div class="stack">${sugg.map(q=>`<button class="btn" data-q="${esc(q)}" style="text-align:left;font-weight:500">${esc(q)}</button>`).join("")}</div>`}</div>
     <form id="chatf" class="row" style="flex-wrap:nowrap"><input type="text" id="chatin" placeholder="Pose ta question" autocomplete="off"><button class="btn primary" ${S.chatBusy?"disabled":""}>Envoyer</button></form>`}
   </div>`;
@@ -1233,7 +1332,7 @@ async function saveLive(){
     rpe:L.rpe,note:L.note.slice(0,300),checkin:{...S.ci},
     blocks:L.plan.items.filter(i=>i.kind==="pair").map(i=>({pair:i.pair,w:i.w,log:i.log.filter(r=>r.some(x=>x!=null))}))};
   S.sessions.push(s); await store.saveSession(s);
-  endLive(); S.tab="histo"; S.adj={intensite:0,zones:[],msg:""}; S.override=null; render();
+  endLive(); S.tab="histo"; S.adj={intensite:0,zones:[],msg:""}; S.override=null; S.mods=null; saveMods(); render();
   aiDebrief(s);
 }
 function endLive(){try{window.speechSynthesis?.cancel();}catch(e){}clearInterval(tick);tick=null;try{wake?.release();}catch(e){} wake=null;S.live=null;}
@@ -1258,6 +1357,9 @@ document.addEventListener("click",e=>{
   if(b.dataset.we){S.settings.weekend=!S.settings.weekend;store.saveSettings();render();return;}
   if(b.dataset.q){aiChat(b.dataset.q);return;}
   if(b.id==="exp"){store.exportFile();return;}
+  if(b.dataset.apply){applyChanges(+b.dataset.apply);render();return;}
+  if(b.dataset.ignore){S.chat[+b.dataset.ignore].ignored=true;render();return;}
+  if(b.id==="undomods"){undoMods();render();return;}
   if(b.dataset.adj){adjustEx(b.dataset.ex,b.dataset.adj,+b.dataset.d);const y=scrollY,open=$("#charges")?.open;render();if(open)$("#charges").open=true;scrollTo(0,y);return;}
   if(b.dataset.reset){delete S.settings.loads[b.dataset.reset];store.saveSettings();const y=scrollY;render();$("#charges").open=true;scrollTo(0,y);return;}
   if(b.dataset.routine){startRoutine(getRoutine(b.dataset.routine));return;}
@@ -1318,17 +1420,26 @@ function saveTest(){
 function saveCoach(){
   const c={url:$("#c_url").value.trim(),code:$("#c_code").value.trim()};
   try{localStorage.setItem(COACH_KEY,JSON.stringify(c));}catch(e){}
-  S.sample=makeSample(c); backup.schedule(); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
+  S.sample=makeSample(c); if(c.code) mirrorConf(c); backup.schedule(); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
 }
 document.addEventListener("input",e=>{ if(e.target.id?.startsWith("t_")){const er=$("#t_err"); if(er) er.hidden=true;} if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
 document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefault();const v=$("#chatin").value;aiChat(v);} });
 
 S.sample=makeSample(coachConf());
 render();
-store.init().then(render);
+(async()=>{
+  let fresh=true; try{ fresh=!localStorage.getItem("creneau"); }catch(e){}
+  backup.synced=!fresh;
+  await store.init();
+  if(!coachConf().code&&await recoverConf()) S.sample=makeSample(coachConf());
+  else if(coachConf().code) mirrorConf(coachConf());
+  // mémoire vide mais coach configuré : on récupère la sauvegarde avant toute écriture
+  if(fresh&&backup.conf()){ try{ const n=await backup.restore(); backup.synced=true; if(n) S.bootNote=`Données restaurées depuis ta sauvegarde : ${n} séance${n>1?"s":""}.`; }catch(e){} }
+  else if(backup.conf()&&Date.now()-backup.at>864e5) backup.schedule();
+  render();
+})();
 // app mise en arrière-plan : on envoie tout de suite la sauvegarde en attente
 document.addEventListener("visibilitychange",()=>{ if(document.hidden&&backup.timer) backup.push(); });
-store.init().then(()=>{ if(backup.conf()&&Date.now()-backup.at>864e5) backup.schedule(); });
 if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 

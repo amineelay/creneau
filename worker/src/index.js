@@ -20,6 +20,31 @@ const ADJUST_SCHEMA = {
   additionalProperties: false,
 };
 
+// modifications de séance proposées depuis le chat ; champs inutilisés : "" ou 0
+const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    message: { type: "string" },
+    changes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          op: { type: "string", enum: ["swap", "reps", "kg", "rounds", "remove"] },
+          ex: { type: "string" },
+          to: { type: "string" },
+          bloc: { type: "integer" },
+          value: { type: "number" },
+        },
+        required: ["op", "ex", "to", "bloc", "value"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["message", "changes"],
+  additionalProperties: false,
+};
+
 export default {
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
@@ -38,6 +63,7 @@ export default {
     const path = new URL(req.url).pathname;
     try {
       if (path === "/json") return await adjust(client, body, cors);
+      if (path === "/plan") return await plan(client, body, cors);
       if (path === "/chat") return chat(client, body, cors);
       return json({ error: "not_found" }, 404, cors);
     } catch (e) {
@@ -55,6 +81,23 @@ async function adjust(client, body, cors) {
     messages: [{ role: "user", content: body.prompt }],
   });
   if (res.stop_reason === "refusal") return json({ intensite: -1, zones_a_eviter: [], message: "Le coach ne peut pas répondre à ça : séance standard allégée." }, 200, cors);
+  const text = res.content.find(b => b.type === "text")?.text;
+  if (!text) return json({ error: "empty" }, 502, cors);
+  return json(JSON.parse(text), 200, cors);
+}
+
+async function plan(client, body, cors) {
+  if (typeof body.prompt !== "string" || !body.prompt.trim()) return json({ error: "prompt" }, 400, cors);
+  const res = await client.beta.messages.create({
+    model: "claude-sonnet-5-5",
+    max_tokens: 4000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: { type: "json_schema", schema: PLAN_SCHEMA } },
+    system: "Tu es un coach sportif concis. Réponds en français, en texte brut sans markdown ni emoji.",
+    messages: [{ role: "user", content: body.prompt }],
+  });
+  if (res.stop_reason === "refusal") return json({ message: "Je ne peux pas répondre à ça.", changes: [] }, 200, cors);
   const text = res.content.find(b => b.type === "text")?.text;
   if (!text) return json({ error: "empty" }, 502, cors);
   return json(JSON.parse(text), 200, cors);
