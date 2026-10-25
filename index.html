@@ -687,7 +687,7 @@ function viewCoach(){
   const sugg=["Comment progresser au goblet squat si je plafonne à 24 kg ?","Je n'ai que 15 minutes ce matin, quoi faire ?","Quel réglage d'élastique pour le face pull ?"];
   return `<div class="stack">
     <div class="header"><div><div class="eyebrow">IA</div><h1>Coach</h1></div></div>
-    ${!S.sample?`<div class="note">Le coach IA n'est pas disponible dans cette vue. Le programme et le suivi fonctionnent sans lui.</div>`:`
+    ${!S.sample?`<div class="note stack" style="gap:10px"><span>Coach pas encore configuré sur ce téléphone. Renseigne l'adresse du proxy et ton code d'accès dans l'onglet Semaine. Le programme et le suivi fonctionnent sans lui.</span><button class="btn" data-tab="semaine" data-focus="c_url">Configurer le coach</button></div>`:`
     <div class="msgs" id="msgs">${S.chat.length?S.chat.map(m=>`<div class="msg ${m.role==="user"?"u":"a"}">${esc(m.content||"…")}</div>`).join(""):
       `<div class="stack">${sugg.map(q=>`<button class="btn" data-q="${esc(q)}" style="text-align:left;font-weight:500">${esc(q)}</button>`).join("")}</div>`}</div>
     <form id="chatf" class="row" style="flex-wrap:nowrap"><input type="text" id="chatin" placeholder="Pose ta question" autocomplete="off"><button class="btn primary" ${S.chatBusy?"disabled":""}>Envoyer</button></form>`}
@@ -800,7 +800,7 @@ function render(){
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   const L=S.live;
-  if(b.dataset.tab){S.tab=b.dataset.tab;render();window.scrollTo(0,0);return;}
+  if(b.dataset.tab){S.tab=b.dataset.tab;render();window.scrollTo(0,0);if(b.dataset.focus)$("#"+b.dataset.focus)?.scrollIntoView({block:"center"});return;}
   if(b.dataset.ci){const k=b.dataset.ci,v=b.dataset.v;S.ci[k]=k==="sommeil"?v:Number(v);render();return;}
   if(b.id==="aiadj"){S.ci.txt=$("#citxt").value;aiAdjust();return;}
   if(b.id==="start"){S.ci.txt=$("#citxt")?.value||S.ci.txt;startLive();return;}
@@ -822,11 +822,6 @@ document.addEventListener("change",e=>{
   const t=e.target;
   if(t.id==="type"){S.override=t.value===autoType()?null:t.value;S.ci.temps=null;render();return;}
   if(t.id==="imp"&&t.files[0]){store.importFile(t.files[0]).then(n=>{S.impMsg=`${n} séance${n>1?"s":""} importée${n>1?"s":""}.`;},()=>{S.impMsg="Fichier illisible : rien n'a été importé.";}).then(render);return;}
-  if(t.id==="c_url"||t.id==="c_code"){
-    const c={url:$("#c_url").value.trim(),code:$("#c_code").value.trim()};
-    try{localStorage.setItem(COACH_KEY,JSON.stringify(c));}catch(e){}
-    S.sample=makeSample(c); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer."; return;
-  }
   const st=S.settings;
   if(t.id==="s_step"){st.step=Math.max(.5,+t.value||2);}
   else if(t.id==="s_fast"){st.fast=Math.min(16,Math.max(6,+t.value||12));}
@@ -835,7 +830,12 @@ document.addEventListener("change",e=>{
   else return;
   store.saveSettings(); render();
 });
-document.addEventListener("input",e=>{ if(e.target.id==="citxt") S.ci.txt=e.target.value; });
+function saveCoach(){
+  const c={url:$("#c_url").value.trim(),code:$("#c_code").value.trim()};
+  try{localStorage.setItem(COACH_KEY,JSON.stringify(c));}catch(e){}
+  S.sample=makeSample(c); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
+}
+document.addEventListener("input",e=>{ if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
 document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefault();const v=$("#chatin").value;aiChat(v);} });
 
 S.sample=makeSample(coachConf());
