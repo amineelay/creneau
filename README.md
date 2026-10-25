@@ -10,6 +10,8 @@ ni build).
 - **Mobilité** : 48 exercices illustrés (bonhomme animé, consigne, minuteur, annonce vocale avec
   changement de côté), réveil 10′ qui change chaque jour, souplesse 15′ (focus tournant sur 3 jours),
   pauses bureau 3′, routine sur mesure (zones, durée, style) et bibliothèque par zone.
+- **Bibliothèque** : 64 exercices de musculation (haltères, élastique en kg, poids du corps) et 48 de
+  mobilité, illustrés, avec recherche et filtres ; kg, élastique et répétitions réglables par exercice.
 - **Semaine** : régularité (semaine validée dès objectif − 1 séances), réglages, données, coach.
 - **Suivi** : bilan de forme toutes les 6 semaines, courbes de tendance, charges, historique.
 - **Données** : `localStorage` du téléphone, export/import JSON, et sauvegarde automatique sur le
