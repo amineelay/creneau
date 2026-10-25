@@ -7,7 +7,9 @@ ni build).
 - **Séance** : rotation santé sur 3 jours (force full body A, cardio modéré, force full body B), bloc
   mobilité posture en fin de séance, séance express de 12′, semaine allégée automatique (1 semaine
   active sur 5, ou après 3 séances à RPE ≥ 9), repos entre les tours et annonces vocales en option.
-- **Pause** : routines de 3′ faisables au bureau, compteur de pauses et de marche du jour.
+- **Mobilité** : 48 exercices illustrés (bonhomme animé, consigne, minuteur, annonce vocale avec
+  changement de côté), réveil 10′ qui change chaque jour, souplesse 15′ (focus tournant sur 3 jours),
+  pauses bureau 3′, routine sur mesure (zones, durée, style) et bibliothèque par zone.
 - **Semaine** : régularité (semaine validée dès objectif − 1 séances), réglages, données, coach.
 - **Suivi** : bilan de forme toutes les 6 semaines, courbes de tendance, charges, historique.
 - **Données** : `localStorage` du téléphone, export/import JSON, et sauvegarde automatique sur le
