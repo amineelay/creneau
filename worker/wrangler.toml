@@ -7,6 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 # origines autorisées (séparées par des virgules) : l'URL GitHub Pages + le serveur local de test
 ALLOWED_ORIGINS = "https://amineelay.github.io,http://localhost:8080"
 
+# sauvegarde automatique des données de l'app (un seul document "data")
+[[kv_namespaces]]
+binding = "BACKUP"
+id = "19d095428a7d4908b92c45250c564dac"
+
 # Secrets (jamais dans ce fichier) :
 #   npx wrangler secret put ANTHROPIC_API_KEY
 #   npx wrangler secret put ACCESS_CODE

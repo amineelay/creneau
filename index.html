@@ -247,7 +247,7 @@ const TPL = {
 // rotation santé (3 séances/semaine) : force, endurance modérée, force
 const SEQ = ["fb_a","z2","fb_b"];
 const DAYS = ["Di","Lu","Ma","Me","Je","Ve","Sa"];
-const DEF = {days:[1,3,5],weekend:false,step:2,fast:12,easy:8,z2:7,startW:{H:12,M:8,L:6}};
+const DEF = {days:[1,3,5],weekend:false,step:2,fast:12,easy:8,z2:7,rest:30,voice:true,startW:{H:12,M:8,L:6}};
 // pauses de 3′ faisables au bureau, debout ou assis, sans matériel
 const PAUSES = [
   {id:"dos",t:"Hanches et dos",moves:[
@@ -402,7 +402,7 @@ const store = {
     try{ const raw=localStorage.getItem("creneau"); if(raw){const v=JSON.parse(raw); S.settings={...DEF,...v.settings}; S.sessions=v.sessions||[]; S.pauses=v.pauses||{}; S.tests=v.tests||[];} }catch(e){}
   },
   data(){ return {app:"creneau",v:2,settings:S.settings,sessions:S.sessions,pauses:S.pauses,tests:S.tests}; },
-  async saveLocal(){ try{localStorage.setItem("creneau",JSON.stringify(this.data()));}catch(e){} },
+  async saveLocal(){ try{localStorage.setItem("creneau",JSON.stringify(this.data()));}catch(e){} backup.schedule(); },
   async saveSession(s){ this.saveLocal(); },
   async saveSettings(){ this.saveLocal(); },
   exportFile(){
@@ -459,6 +459,39 @@ function makeSample({url,code}){
     return res.json();
   };
   return sample;
+}
+
+// ---------- Sauvegarde auto sur le Worker (même adresse et même code que le coach) ----------
+const backup = {
+  timer:null, err:null,
+  at:(()=>{ try{ return +localStorage.getItem("creneau.backupAt")||0; }catch(e){ return 0; } })(),
+  conf(){ const c=coachConf(); return c.url&&c.code ? {base:c.url.replace(/\/+$/,""),code:c.code} : null; },
+  schedule(){ if(!this.conf()) return; clearTimeout(this.timer); this.timer=setTimeout(()=>this.push(),5000); },
+  async push(){
+    clearTimeout(this.timer); this.timer=null; const c=this.conf(); if(!c) return;
+    const body=JSON.stringify(store.data());
+    try{
+      const r=await fetch(c.base+"/backup",{method:"PUT",headers:{"Content-Type":"application/json","X-Access-Code":c.code},body,keepalive:body.length<60000});
+      if(r.ok){ this.at=Date.now(); this.err=null; try{localStorage.setItem("creneau.backupAt",String(this.at));}catch(e){} }
+      else this.err=r.status===401?"code refusé":`erreur ${r.status}`;
+    }catch(e){ this.err="pas de réseau"; }
+    const el=$("#bk_state"); if(el) el.textContent=backupText();
+  },
+  // renvoie le nombre de séances ajoutées, ou null s'il n'y a pas encore de sauvegarde
+  async restore(){
+    const c=this.conf(); if(!c) throw new Error("conf");
+    const r=await fetch(c.base+"/backup",{headers:{"X-Access-Code":c.code},cache:"no-store"});
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error(String(r.status));
+    return store.merge(await r.json());
+  },
+};
+function backupText(){
+  if(!backup.conf()) return "Sauvegarde auto : elle s'active dès que le coach est configuré (adresse + code).";
+  if(backup.err) return `Dernière sauvegarde échouée (${backup.err}). Nouvel essai à la prochaine modification.`;
+  if(!backup.at) return "Sauvegarde auto activée : première copie à la prochaine modification.";
+  const d=new Date(backup.at);
+  return `Sauvegardé automatiquement le ${d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} à ${d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}.`;
 }
 
 // ---------- Moteur déterministe ----------
@@ -520,7 +553,7 @@ function estimate(p){
     if(it.kind==="run") s+=it.steps.reduce((a,x)=>a+x.sec,0);
     else if(it.kind==="text") s+=it.sec;
     else if(it.kind==="mob") s+=it.moves.reduce((a,m)=>a+m.sec,0);
-    else s+=it.rounds*it.pair.reduce((a,id)=>a+setSec(id),0)+60;
+    else s+=it.rounds*it.pair.reduce((a,id)=>a+setSec(id),0)+(it.rounds-1)*(p.rest||0)+60;
   }); return Math.round(s/60);
 }
 function buildPlan(){
@@ -560,7 +593,7 @@ function buildPlan(){
   }
   if(tpl.long) items.push({kind:"run",title:"Retour au calme tapis",steps:[{label:"Footing facile",sec:600,speed:st.easy},{label:"Marche",sec:120,speed:5}]});
   items.push({kind:"mob",title:"Mobilité posture",moves:tpl.short?MOB.slice(0,3):MOB});
-  const p={type,title:tpl.t,items,inten,zones,deload:deload()};
+  const p={type,title:tpl.t,items,inten,zones,deload:deload(),rest:st.rest||0};
   // ajustement au temps dispo : 3 tours, puis on retire des blocs depuis la fin
   const pairs=()=>p.items.filter(i=>i.kind==="pair");
   let guard=0;
@@ -662,7 +695,7 @@ function planHTML(p){
     if(it.kind==="text") return `<div class="block"><div class="bmark run">FIN<b>${it.sec/60}′</b></div><div class="pair"><div class="ex"><span class="n">${esc(it.title)}</span></div><div class="muted" style="font-size:13px">${esc(it.txt)}</div></div></div>`;
     bi++; const note=it.sug.find(s=>s.note);
     return `<div class="block"><div class="bmark">BLOC<b>${String.fromCharCode(64+bi)}</b></div><div class="pair">
-      <div class="row between"><span class="eyebrow">${it.rounds} tours enchaînés, sans repos</span>${it.w?`<span class="tag kg num">${it.w} kg</span>`:`<span class="tag">pas d'haltères</span>`}</div>
+      <div class="row between"><span class="eyebrow">${it.rounds} tours${p.rest?` · repos ${p.rest} s`:" enchaînés, sans repos"}</span>${it.w?`<span class="tag kg num">${it.w} kg</span>`:`<span class="tag">pas d'haltères</span>`}</div>
       ${it.pair.map((id,k)=>exLine(id,it.targets[k],it.sug[k])).join("")}
       ${note?`<div class="muted" style="font-size:13px">${esc(note.note)}</div>`:""}
     </div></div>`;
@@ -701,7 +734,7 @@ function viewSeance(){
       ${planHTML(p)}
     </div>
     <button class="btn primary big" id="start">Démarrer</button>
-    <p class="muted" style="font-size:12px;margin:0">Haltères réglés une fois par bloc : chaque duo associe au plus un exercice haltères à un exercice élastique ou au poids du corps.</p>
+    <p class="muted" style="font-size:12px;margin:0">Haltères réglés une fois par bloc : chaque duo associe au plus un exercice haltères à un exercice élastique ou au poids du corps. Repos entre les tours et annonces vocales : onglet Semaine.</p>
   </div>`;
 }
 function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
@@ -755,12 +788,15 @@ function viewSemaine(){
         <label class="field" style="flex:1"><span>Footing</span><input type="number" id="s_easy" min="5" max="14" step="0.5" value="${st.easy}"></label>
         <label class="field" style="flex:1"><span>Modéré</span><input type="number" id="s_z2" min="4" max="12" step="0.5" value="${st.z2}"></label>
       </div>
+      <div class="field"><span>Repos entre les tours d'un bloc</span><div class="row">${[[0,"Aucun"],[30,"30 s"],[60,"60 s"],[90,"90 s"]].map(([v,l])=>`<button class="chip" data-rest="${v}" aria-pressed="${(st.rest||0)===v}">${l}</button>`).join("")}</div></div>
+      <div class="field"><span>Pendant la séance</span><div class="row"><button class="chip" data-voice="1" aria-pressed="${!!st.voice}">Annonces vocales</button></div></div>
       <div class="field"><span>Charges de départ (kg par haltère) : lourd / moyen / léger</span><div class="row" style="flex-wrap:nowrap">
         ${["H","M","L"].map(t=>`<input type="number" data-sw="${t}" min="2" max="24" step="${st.step}" value="${st.startW[t]}" aria-label="Charge ${t}">`).join("")}</div></div>
     </div>
     <div class="card stack"><h3>Données</h3>
-      <p class="muted" style="font-size:13px;margin:0">Tes séances restent sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"}. Exporte régulièrement un fichier de sauvegarde.</p>
-      <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label></div>
+      <p class="muted" style="font-size:13px;margin:0">Tes données sont sur ce téléphone${S.persisted?"":" (le navigateur peut les effacer s'il manque de place)"} et copiées automatiquement sur ton relais Cloudflare.</p>
+      <p class="muted" id="bk_state" style="font-size:12px;margin:0">${esc(backupText())}</p>
+      <div class="row" style="flex-wrap:nowrap"><button class="btn" id="exp" style="flex:1">Exporter</button><label class="btn" style="flex:1;text-align:center;cursor:pointer">Importer<input type="file" id="imp" accept="application/json,.json" hidden></label>${backup.conf()?`<button class="btn" id="rst" style="flex:1">Restaurer</button>`:""}</div>
       ${S.impMsg?`<div class="muted" style="font-size:13px">${esc(S.impMsg)}</div>`:""}
     </div>
     <div class="card stack"><h3>Coach IA</h3>
@@ -875,7 +911,10 @@ function flatten(p){
     else if(it.kind==="mob") it.moves.forEach(m=>steps.push({kind:"timer",ii,label:m.n,sec:m.sec,txt:m.cue,title:it.title}));
     else{
       bi++; steps.push({kind:"weight",ii,bi});
-      for(let r=0;r<it.rounds;r++) it.pair.forEach((id,k)=>steps.push({kind:"set",ii,bi,r,k,id}));
+      for(let r=0;r<it.rounds;r++){
+        it.pair.forEach((id,k)=>steps.push({kind:"set",ii,bi,r,k,id}));
+        if(p.rest&&r<it.rounds-1) steps.push({kind:"timer",ii,label:"Repos",sec:p.rest,rest:true,txt:`Respire, bois une gorgée. Tour ${r+2}/${it.rounds} ensuite.`,title:`Bloc ${String.fromCharCode(64+bi)}`});
+      }
     }
   });
   return steps;
@@ -895,10 +934,24 @@ async function startLive(){
   try{wake=await navigator.wakeLock?.request("screen");}catch(e){}
   beep(660); clearInterval(tick); tick=setInterval(liveTick,1000); prepStep(); render();
 }
+function say(t){
+  if(!S.settings.voice||!window.speechSynthesis) return;
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang="fr-FR"; u.rate=1.05; speechSynthesis.speak(u); }catch(e){}
+}
+const num=v=>String(v).replace(".",",");
+function announce(st){
+  const L=S.live, it=L.plan.items[st.ii];
+  if(st.kind==="run") return say(`${st.label}, ${num(st.speed)} kilomètres heure`);
+  if(st.kind==="timer") return say(st.rest?`Repos, ${st.sec} secondes`:st.label);
+  if(st.kind==="weight") return say(it.w?`Bloc ${String.fromCharCode(64+st.bi)}. Règle les haltères à ${num(it.w)} kilos.`:`Bloc ${String.fromCharCode(64+st.bi)}.`);
+  const e=EX[st.id];
+  say(st.r>0?e.n:`${e.n}. ${it.targets[st.k]} ${e.hold?"secondes":"répétitions"}${e.uni?" par côté":""}.`);
+}
 function prepStep(){
   const L=S.live, st=L.steps[L.i]; if(!st) return;
   if(st.kind==="run"||st.kind==="timer") L.left=st.sec;
   if(st.kind==="set"){const it=L.plan.items[st.ii]; const prev=st.r>0?it.log[st.r-1][st.k]:null; L.val=prev??it.targets[st.k];}
+  announce(st);
 }
 function liveTick(){
   const L=S.live; if(!L||L.done) return;
@@ -913,7 +966,7 @@ function liveTick(){
 function advance(){
   const L=S.live, st=L.steps[L.i];
   if(st?.kind==="set"){ L.plan.items[st.ii].log[st.r][st.k]=L.val; }
-  L.i++; if(L.i>=L.steps.length){L.done=true;beep(990,.4);} else prepStep();
+  L.i++; if(L.i>=L.steps.length){L.done=true;beep(990,.4);say(L.pause?"Pause terminée.":"Séance terminée. Bien joué.");} else prepStep();
   render();
 }
 const fmt=s=>`${Math.floor(Math.max(0,s)/60)}:${String(Math.max(0,s)%60).padStart(2,"0")}`;
@@ -945,7 +998,7 @@ function viewLive(){
       <div class="big" id="left">${fmt(L.left)}</div>${st.extra?`<div class="muted">${esc(st.extra)}</div>`:""}
       <div class="row" style="flex-wrap:nowrap"><button class="btn" id="m30" style="flex:1">−30 s</button><button class="btn" id="p30" style="flex:1">+30 s</button><button class="btn primary" id="next" style="flex:2">Passer</button></div>`;
   } else if(st.kind==="weight"){
-    body=`<div class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · ${it.rounds} tours sans repos</div>
+    body=`<div class="eyebrow">Bloc ${String.fromCharCode(64+st.bi)} · ${it.rounds} tours${L.plan.rest?` · repos ${L.plan.rest} s`:" sans repos"}</div>
       <div class="what">${it.w?`Règle les haltères`:`Pas d'haltères`}</div>
       ${it.w?`<div class="stepper"><button data-w="-1" aria-label="Moins lourd">−</button><div class="v">${it.w}<span class="u">kg par haltère</span></div><button data-w="1" aria-label="Plus lourd">+</button></div>`:""}
       <div class="duo">${it.pair.map(id=>`<div class="thumb">${illus(id)}</div>`).join("")}</div>
@@ -969,7 +1022,7 @@ async function saveLive(){
   endLive(); S.tab="histo"; S.adj={intensite:0,zones:[],msg:""}; S.override=null; render();
   aiDebrief(s);
 }
-function endLive(){clearInterval(tick);tick=null;try{wake?.release();}catch(e){} wake=null;S.live=null;}
+function endLive(){try{window.speechSynthesis?.cancel();}catch(e){}clearInterval(tick);tick=null;try{wake?.release();}catch(e){} wake=null;S.live=null;}
 
 function render(){
   const app=$("#app");
@@ -995,6 +1048,9 @@ document.addEventListener("click",e=>{
   if(b.dataset.bilan){S.testForm=true;S.tab="histo";render();$("#bilan")?.scrollIntoView({block:"start"});return;}
   if(b.id==="canceltest"){S.testForm=false;render();return;}
   if(b.id==="savetest"){saveTest();return;}
+  if(b.dataset.rest!=null){S.settings.rest=+b.dataset.rest;store.saveSettings();render();return;}
+  if(b.dataset.voice){S.settings.voice=!S.settings.voice;store.saveSettings();render();say("Annonces vocales activées.");return;}
+  if(b.id==="rst"){S.impMsg="Restauration…";render();backup.restore().then(n=>{S.impMsg=n==null?"Aucune sauvegarde trouvée sur le relais.":`Restauration terminée : ${n} nouvelle${n>1?"s":""} séance${n>1?"s":""}.`;},e=>{S.impMsg=e.message==="401"?"Code d'accès refusé par le relais.":"Restauration impossible (réseau ou relais).";}).then(render);return;}
   if(b.dataset.walk){store.addPause("walk",+b.dataset.walk).then(render);return;}
   if(b.id==="express"){S.override="express";S.ci.temps=null;render();window.scrollTo(0,0);return;}
   if(!L) return;
@@ -1039,7 +1095,7 @@ function saveTest(){
 function saveCoach(){
   const c={url:$("#c_url").value.trim(),code:$("#c_code").value.trim()};
   try{localStorage.setItem(COACH_KEY,JSON.stringify(c));}catch(e){}
-  S.sample=makeSample(c); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
+  S.sample=makeSample(c); backup.schedule(); $("#c_state").textContent=S.sample?"Coach activé.":"Coach désactivé : renseigne l'adresse et le code pour l'activer.";
 }
 document.addEventListener("input",e=>{ if(e.target.id?.startsWith("t_")){const er=$("#t_err"); if(er) er.hidden=true;} if(e.target.id==="citxt") S.ci.txt=e.target.value; if(e.target.id==="c_url"||e.target.id==="c_code") saveCoach(); });
 document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefault();const v=$("#chatin").value;aiChat(v);} });
@@ -1047,6 +1103,9 @@ document.addEventListener("submit",e=>{ if(e.target.id==="chatf"){e.preventDefau
 S.sample=makeSample(coachConf());
 render();
 store.init().then(render);
+// app mise en arrière-plan : on envoie tout de suite la sauvegarde en attente
+document.addEventListener("visibilitychange",()=>{ if(document.hidden&&backup.timer) backup.push(); });
+store.init().then(()=>{ if(backup.conf()&&Date.now()-backup.at>864e5) backup.schedule(); });
 if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 

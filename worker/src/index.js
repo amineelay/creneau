@@ -1,9 +1,11 @@
 // Proxy du coach IA de Créneau : garde la clé API Anthropic côté serveur.
 // POST /json  {prompt}    → ajustement du check-in, objet JSON {intensite, zones_a_eviter, message}
 // POST /chat  {messages}  → débrief / chat, flux SSE "data: {"text": "..."}" puis "data: {"done": true}"
+// GET|PUT /backup         → sauvegarde des données de l'app dans KV (document unique)
 import Anthropic from "@anthropic-ai/sdk";
 
 const MAX_BODY = 40_000;     // octets
+const MAX_BACKUP = 1_000_000;
 const MAX_MESSAGES = 24;
 const ZONES = ["epaule", "coude", "poignet", "dos", "genou"];
 
@@ -22,9 +24,10 @@ export default {
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    if (req.method !== "POST") return json({ error: "method" }, 405, cors);
     if (!cors["Access-Control-Allow-Origin"]) return json({ error: "origin" }, 403, cors);
     if (!env.ACCESS_CODE || req.headers.get("X-Access-Code") !== env.ACCESS_CODE) return json({ error: "unauthorized" }, 401, cors);
+    if (new URL(req.url).pathname === "/backup") return backup(req, env, cors);
+    if (req.method !== "POST") return json({ error: "method" }, 405, cors);
 
     const raw = await req.text();
     if (raw.length > MAX_BODY) return json({ error: "too_large" }, 413, cors);
@@ -95,10 +98,28 @@ function chat(client, body, cors) {
   return new Response(readable, { headers: { ...cors, "Content-Type": "text/event-stream", "Cache-Control": "no-store" } });
 }
 
+async function backup(req, env, cors) {
+  if (!env.BACKUP) return json({ error: "no_storage" }, 501, cors);
+  if (req.method === "GET") {
+    const data = await env.BACKUP.get("data");
+    if (!data) return json({ error: "empty" }, 404, cors);
+    return new Response(data, { headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+  }
+  if (req.method !== "PUT") return json({ error: "method" }, 405, cors);
+  const raw = await req.text();
+  if (raw.length > MAX_BACKUP) return json({ error: "too_large" }, 413, cors);
+  let v;
+  try { v = JSON.parse(raw); } catch { return json({ error: "bad_json" }, 400, cors); }
+  if (v?.app !== "creneau" || !Array.isArray(v.sessions)) return json({ error: "bad_backup" }, 400, cors);
+  const at = Date.now();
+  await env.BACKUP.put("data", raw, { metadata: { at } });
+  return json({ ok: true, at }, 200, cors);
+}
+
 function corsHeaders(req, env) {
   const origin = req.headers.get("Origin") || "";
   const allowed = (env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
-  const h = { "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Access-Code", "Vary": "Origin" };
+  const h = { "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Access-Code", "Vary": "Origin" };
   if (allowed.includes(origin)) h["Access-Control-Allow-Origin"] = origin;
   return h;
 }
